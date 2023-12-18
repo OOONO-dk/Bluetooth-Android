@@ -1,8 +1,7 @@
-package com.example.bluetoothframework.data
+package com.example.bluetoothframework.domain
 
 import android.annotation.SuppressLint
 import android.bluetooth.le.ScanResult
-import com.example.bluetoothframework.domain.BluetoothDeviceDomain
 
 @SuppressLint("MissingPermission")
 fun ScanResult.toBluetoothDeviceDomain(): BluetoothDeviceDomain {

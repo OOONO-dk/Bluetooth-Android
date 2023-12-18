@@ -1,4 +1,4 @@
-package com.example.bluetoothframework.domain.scanner
+package com.example.bluetoothframework.domain.scan.tracker
 
 import android.os.CountDownTimer
 import javax.inject.Inject
@@ -8,19 +8,11 @@ class ScanTracker @Inject constructor() : ScanTrackerInterface {
     private var timer: CountDownTimer? = null
 
     override fun incrementScanCount() {
-        if (timer == null) {
-            startTimer()
-        }
+        if (timer == null) startTimer()
         scanCount++
     }
 
     override fun isScanningAllowed(): Boolean {
-        val isAllowed = scanCount < MAX_SCAN_COUNT
-
-        if (!isAllowed) {
-            println("RRR - Scanner is not allowed to scan due to over 5 retries in 30 seconds")
-        }
-
         return scanCount < MAX_SCAN_COUNT
     }
 

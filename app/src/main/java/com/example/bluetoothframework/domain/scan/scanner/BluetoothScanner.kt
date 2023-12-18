@@ -1,4 +1,4 @@
-package com.example.bluetoothframework.data
+package com.example.bluetoothframework.domain.scan.scanner
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -9,27 +9,25 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
+import com.example.bluetoothframework.domain.toBluetoothDeviceDomain
 import com.example.bluetoothframework.domain.BluetoothDeviceDomain
-import com.example.bluetoothframework.domain.scanner.BluetoothScanCallback
-import com.example.bluetoothframework.domain.scanner.BluetoothScannerConfig
-import com.example.bluetoothframework.domain.scanner.BluetoothScannerInterface
-import com.example.bluetoothframework.domain.scanner.DeviceDiscoverTimeoutInterface
-import com.example.bluetoothframework.domain.scanner.ScanTrackerInterface
+import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
+import com.example.bluetoothframework.domain.scan.BluetoothScannerConfig
+import com.example.bluetoothframework.domain.scan.discover_timeout.DeviceDiscoverTimeoutInterface
+import com.example.bluetoothframework.domain.scan.tracker.ScanTrackerInterface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
-// TODO: Handle onFailure
-
 @SuppressLint("MissingPermission")
 class BluetoothScanner @Inject constructor(
     private val context: Context,
-    private val callback: BluetoothScanCallback,
     private val scanTracker: ScanTrackerInterface,
     private val deviceTimeout: DeviceDiscoverTimeoutInterface
 ) : BluetoothScannerInterface {
     private var isScanning = false
     private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
+    private var bluetoothScanCallback: BluetoothScanCallback? = null
 
     private val bluetoothManager by lazy {
         context.getSystemService(BluetoothManager::class.java)
@@ -44,7 +42,6 @@ class BluetoothScanner @Inject constructor(
         if (!isScanAllowed(scannerConfig)) return
         if (!hasBluetoothPermission()) return
 
-        println("RRR - Started discovery")
         isScanning = true
         bleScanner?.startScan(scannerConfig.scanFilter, scannerConfig.scanSettings, scanCallback)
 
@@ -57,6 +54,10 @@ class BluetoothScanner @Inject constructor(
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             onDeviceDiscovered(result)
         }
+
+        override fun onScanFailed(errorCode: Int) {
+            bluetoothScanCallback?.onScanFailed()
+        }
     }
 
     private fun onDeviceDiscovered(result: ScanResult) {
@@ -66,7 +67,7 @@ class BluetoothScanner @Inject constructor(
         _scannedDevices.update { devices ->
             val deviceExists = updatedList != devices
             if (deviceExists) updatedList else {
-                callback.onDeviceDiscovered(newDevice)
+                bluetoothScanCallback?.onDeviceDiscovered(newDevice)
                 devices + newDevice
             }
         }
@@ -95,6 +96,10 @@ class BluetoothScanner @Inject constructor(
         deviceTimeout.stopDeviceDiscoverTimeoutCheck()
     }
 
+    override fun setScanCallback(listener: BluetoothScanCallback) {
+        bluetoothScanCallback = listener
+    }
+
     private fun removeOldDevices(discoverInactivityDurationMillis: Long) {
         val currentTime = System.currentTimeMillis()
         val thresholdTime = currentTime - discoverInactivityDurationMillis
@@ -104,7 +109,7 @@ class BluetoothScanner @Inject constructor(
         }
 
         val removedDevices =  _scannedDevices.value - updatedList.toSet()
-        removedDevices.forEach { callback.onDeviceRemoved(it) }
+        removedDevices.forEach { bluetoothScanCallback?.onDeviceRemoved(it) }
 
         _scannedDevices.value = updatedList
     }

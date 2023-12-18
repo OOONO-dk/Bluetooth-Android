@@ -1,18 +1,16 @@
 package com.example.bluetoothframework
 
 import android.content.Context
-import com.example.bluetoothframework.data.BluetoothScanner
-import com.example.bluetoothframework.domain.scanner.BluetoothScannerInterface
-import com.example.bluetoothframework.domain.scanner.BluetoothScanCallback
-import com.example.bluetoothframework.domain.scanner.DeviceDiscoverTimeout
-import com.example.bluetoothframework.domain.scanner.DeviceDiscoverTimeoutInterface
-import com.example.bluetoothframework.domain.scanner.ScanTracker
-import com.example.bluetoothframework.domain.scanner.ScanTrackerInterface
-import com.example.bluetoothframework.domain.BluetoothHelper
-import com.example.bluetoothframework.domain.BluetoothHelperInterface
+import com.example.bluetoothframework.domain.scan.scanner.BluetoothScanner
+import com.example.bluetoothframework.domain.implementation_examples.ScannerExample
+import com.example.bluetoothframework.domain.implementation_examples.ScannerExampleInterface
 import com.example.bluetoothframework.domain.controller.BluetoothController
 import com.example.bluetoothframework.domain.controller.BluetoothControllerInterface
-import com.example.bluetoothframework.domain.scanner.GG
+import com.example.bluetoothframework.domain.scan.scanner.BluetoothScannerInterface
+import com.example.bluetoothframework.domain.scan.discover_timeout.DeviceDiscoverTimeout
+import com.example.bluetoothframework.domain.scan.discover_timeout.DeviceDiscoverTimeoutInterface
+import com.example.bluetoothframework.domain.scan.tracker.ScanTracker
+import com.example.bluetoothframework.domain.scan.tracker.ScanTrackerInterface
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,32 +29,20 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBluetoothScanCallback(): GG {
-        return BluetoothHelper()
+    fun provideBluetoothScanCallback(
+        bluetoothController: BluetoothControllerInterface
+    ): ScannerExampleInterface {
+        return ScannerExample(bluetoothController)
     }
-
-    //@Provides
-    //@Singleton
-    //fun provideBluetoothScanCallback(): BluetoothScanCallback {
-    //    return BluetoothHelper()
-    //}
-
-    //@Provides
-    //@Singleton
-    //fun provideBluetoothHelper(): BluetoothHelperInterface {
-    //    return BluetoothHelper()
-    //}
-
 
     @Singleton
     @Provides
     fun providesBluetoothScanner(
-        callback: GG,
         @ApplicationContext context: Context,
         @Singleton scanTracker: ScanTrackerInterface,
         @Singleton deviceDiscoverTimeout: DeviceDiscoverTimeoutInterface
     ): BluetoothScannerInterface {
-        return BluetoothScanner(context, callback, scanTracker, deviceDiscoverTimeout)
+        return BluetoothScanner(context, scanTracker, deviceDiscoverTimeout)
     }
 
     @Singleton

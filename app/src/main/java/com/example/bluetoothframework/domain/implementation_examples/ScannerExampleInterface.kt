@@ -1,11 +1,14 @@
 package com.example.bluetoothframework.domain.implementation_examples
 
-import com.example.bluetoothframework.domain.BluetoothDeviceDomain
+import android.bluetooth.BluetoothDevice
+import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
 import kotlinx.coroutines.flow.StateFlow
 
-interface ScannerExampleInterface: BluetoothScanCallback {
-    val scannedDevices: StateFlow<List<BluetoothDeviceDomain>>
+interface ScannerExampleInterface: BluetoothScanCallback, BluetoothConnectCallback {
+    val scannedDevices: StateFlow<List<BluetoothDevice>>
+    val connectedDevices: StateFlow<List<BluetoothDevice>>
     fun startDiscovery()
     fun stopDiscovery()
+    fun connectDevice(device: BluetoothDevice)
 }

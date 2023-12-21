@@ -1,5 +1,7 @@
 package com.example.bluetoothframework.presentation
 
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -28,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.bluetoothframework.domain.BluetoothDeviceDomain
 import com.example.bluetoothframework.ui.theme.BluetoothFrameworkTheme
 
 @Composable
@@ -62,13 +63,15 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
                 Title("Available Devices")
                 Container (Modifier.weight(1f)) {
-                    AvailableDevicesList(state.scannedDevices)
+                    AvailableDevicesList(state.scannedDevices) { viewModel.connectToDevice(it)}
                 }
 
                 Spacer(Modifier.height(10.dp))
 
                 Title("Connected Devices")
-                Container (Modifier.weight(1f)) {}
+                Container (Modifier.weight(1f)) {
+                    AvailableDevicesList(state.connectedDevices) { viewModel.connectToDevice(it)}
+                }
 
                 Spacer(Modifier.height(10.dp))
             }
@@ -94,7 +97,8 @@ private fun ClickableText(
 
 @Composable
 private fun AvailableDevicesList(
-    scannedDevices: List<BluetoothDeviceDomain>
+    scannedDevices: List<BluetoothDevice>,
+    onConnectClick: (BluetoothDevice) -> Unit
 ) {
     LazyColumn (
         horizontalAlignment = Alignment.CenterHorizontally
@@ -104,7 +108,7 @@ private fun AvailableDevicesList(
         }
         items(scannedDevices) { device ->
             Spacer(Modifier.height(7.dp))
-            DiscoveredDevice(device)
+            DiscoveredDevice(device) { onConnectClick(device) }
         }
         item {
             Spacer(Modifier.height(20.dp))
@@ -112,9 +116,11 @@ private fun AvailableDevicesList(
     }
 }
 
+@SuppressLint("MissingPermission")
 @Composable
 private fun DiscoveredDevice(
-    device: BluetoothDeviceDomain
+    device: BluetoothDevice,
+    onClick: () -> Unit
 ) {
     Box(
         Modifier
@@ -129,14 +135,14 @@ private fun DiscoveredDevice(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "${device.name}\n${device.address}\nRssi: ${device.rssi}",
+                "${device.name}\n${device.address}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f)
             )
             ClickableText(
                 "connect",
                 Modifier.padding(horizontal = 12.dp)
-            ) { /*TODO*/ }
+            ) { onClick() }
         }
     }
 }

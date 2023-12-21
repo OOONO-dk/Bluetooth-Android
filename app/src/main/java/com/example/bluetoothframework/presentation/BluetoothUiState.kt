@@ -1,7 +1,8 @@
 package com.example.bluetoothframework.presentation
 
-import com.example.bluetoothframework.domain.BluetoothDeviceDomain
+import android.bluetooth.BluetoothDevice
 
 data class BluetoothUiState(
-    val scannedDevices: List<BluetoothDeviceDomain> = emptyList()
+    val scannedDevices: List<BluetoothDevice> = emptyList(),
+    val connectedDevices: List<BluetoothDevice> = emptyList()
 )

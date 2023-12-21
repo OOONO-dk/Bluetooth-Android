@@ -1,9 +1,9 @@
 package com.example.bluetoothframework.domain.implementation_examples
 
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.os.ParcelUuid
-import com.example.bluetoothframework.domain.BluetoothDeviceDomain
 import com.example.bluetoothframework.domain.controller.BluetoothControllerInterface
 import com.example.bluetoothframework.domain.scan.BluetoothScannerConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,21 +16,26 @@ import javax.inject.Inject
 class ScannerExample @Inject constructor(
     private val bluetoothController: BluetoothControllerInterface
 ) : ScannerExampleInterface {
-    private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
-    override val scannedDevices: StateFlow<List<BluetoothDeviceDomain>>
+    private val _scannedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
+    private val _connectedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
+
+    override val scannedDevices: StateFlow<List<BluetoothDevice>>
         get() = _scannedDevices.asStateFlow()
+    override val connectedDevices: StateFlow<List<BluetoothDevice>>
+        get() = _connectedDevices.asStateFlow()
 
     init {
         bluetoothController.setScanCallback(this)
+        bluetoothController.setConnectCallback(this)
     }
 
     private val serviceUUIDs = listOf(
         // Sirene
         "5E631523-6743-11ED-9022-0242AC120002",
-        "5E630000-6743-11ED-9022-0242AC120002",
-        "5E63F720-6743-11ED-9022-0242AC120002",
-        "5E63F721-6743-11ED-9022-0242AC120002",
-        "5E63F722-6743-11ED-9022-0242AC120002",
+        //"5E630000-6743-11ED-9022-0242AC120002",
+        //"5E63F720-6743-11ED-9022-0242AC120002",
+        //"5E63F721-6743-11ED-9022-0242AC120002",
+        //"5E63F722-6743-11ED-9022-0242AC120002",
 
         // Co-driver
         "00001523-1212-efde-1523-785feabcd123",
@@ -54,20 +59,6 @@ class ScannerExample @Inject constructor(
         discoverInactivityDurationMillis = TimeUnit.SECONDS.toMillis(5)
     )
 
-    override fun onDeviceRemoved(removedDevice: BluetoothDeviceDomain) {
-        _scannedDevices.update {
-            _scannedDevices.value.filter {
-                it.address != removedDevice.address
-            }
-        }
-    }
-
-    override fun onDeviceDiscovered(newDevice: BluetoothDeviceDomain) {
-        _scannedDevices.update { scannedDevices ->
-            scannedDevices + newDevice
-        }
-    }
-
     override fun startDiscovery() {
         bluetoothController.startDiscovery(scanConfig)
     }
@@ -76,7 +67,54 @@ class ScannerExample @Inject constructor(
         bluetoothController.stopDiscovery()
     }
 
+
+    /***************************
+     * Delegates.
+     **************************/
+    override fun connectDevice(device: BluetoothDevice) {
+        bluetoothController.connectDevice(device)
+    }
+
+    override fun onDeviceDiscovered(newDevice: BluetoothDevice) {
+        _scannedDevices.update { scannedDevices ->
+            scannedDevices + newDevice
+        }
+    }
+
+    override fun onDeviceRemoved(removedDeviceAddress: String) {
+        _scannedDevices.update {
+            _scannedDevices.value.filter {
+                it.address != removedDeviceAddress
+            }
+        }
+    }
+
     override fun onScanFailed() {
         startDiscovery()
+    }
+
+    override fun onDeviceConnected(device: BluetoothDevice) {
+        println("RRR - onDeviceConnected: ${device.address}")
+        _connectedDevices.update { connectedDevices ->
+            connectedDevices + device
+        }
+    }
+
+    override fun onDeviceDisconnected(device: BluetoothDevice) {
+        println("RRR - onDeviceDisconnected: ${device.address}")
+        _connectedDevices.update {
+            _connectedDevices.value.filter {
+                it.address != device.address
+            }
+        }
+    }
+
+    override fun onConnectionFail(device: BluetoothDevice) {
+        println("RRR - onConnectionFail: ${device.address}")
+        _connectedDevices.update {
+            _connectedDevices.value.filter {
+                it.address != device.address
+            }
+        }
     }
 }

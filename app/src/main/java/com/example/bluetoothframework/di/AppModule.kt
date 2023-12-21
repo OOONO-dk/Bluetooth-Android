@@ -1,6 +1,8 @@
-package com.example.bluetoothframework
+package com.example.bluetoothframework.di
 
 import android.content.Context
+import com.example.bluetoothframework.domain.connect.connector.BluetoothConnector
+import com.example.bluetoothframework.domain.connect.connector.BluetoothConnectorInterface
 import com.example.bluetoothframework.domain.scan.scanner.BluetoothScanner
 import com.example.bluetoothframework.domain.implementation_examples.ScannerExample
 import com.example.bluetoothframework.domain.implementation_examples.ScannerExampleInterface
@@ -47,10 +49,19 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun providesBluetoothConnector(
+        @ApplicationContext context: Context
+    ): BluetoothConnectorInterface {
+        return BluetoothConnector(context)
+    }
+
+    @Singleton
+    @Provides
     fun providesBluetoothController(
-        @Singleton bluetoothScanner: BluetoothScannerInterface
+        @Singleton bluetoothScanner: BluetoothScannerInterface,
+        @Singleton bluetoothConnector: BluetoothConnectorInterface,
     ): BluetoothControllerInterface {
-        return BluetoothController(bluetoothScanner)
+        return BluetoothController(bluetoothScanner, bluetoothConnector)
     }
 
     @Singleton

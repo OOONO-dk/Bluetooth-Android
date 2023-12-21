@@ -9,7 +9,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
-import com.example.bluetoothframework.domain.toBluetoothDeviceDomain
+import com.example.bluetoothframework.domain.extensions.toBluetoothDeviceDomain
 import com.example.bluetoothframework.domain.BluetoothDeviceDomain
 import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
 import com.example.bluetoothframework.domain.scan.BluetoothScannerConfig
@@ -67,7 +67,7 @@ class BluetoothScanner @Inject constructor(
         _scannedDevices.update { devices ->
             val deviceExists = updatedList != devices
             if (deviceExists) updatedList else {
-                bluetoothScanCallback?.onDeviceDiscovered(newDevice)
+                bluetoothScanCallback?.onDeviceDiscovered(result.device)
                 devices + newDevice
             }
         }
@@ -109,7 +109,7 @@ class BluetoothScanner @Inject constructor(
         }
 
         val removedDevices =  _scannedDevices.value - updatedList.toSet()
-        removedDevices.forEach { bluetoothScanCallback?.onDeviceRemoved(it) }
+        removedDevices.forEach { bluetoothScanCallback?.onDeviceRemoved(it.address) }
 
         _scannedDevices.value = updatedList
     }

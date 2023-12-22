@@ -5,9 +5,18 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattService
 import android.content.Context
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
+import com.example.bluetoothframework.domain.extensions.determineCharacteristicTypes
+import com.example.bluetoothframework.domain.extensions.isIndicatable
+import com.example.bluetoothframework.domain.extensions.isNotifiable
 import com.example.bluetoothframework.domain.extensions.printGattTable
+import com.example.bluetoothframework.domain.scan.scanner.BluetoothScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.UUID
@@ -19,7 +28,6 @@ class BluetoothConnector @Inject constructor(
 ) : BluetoothConnectorInterface {
     private var bluetoothConnectCallback: BluetoothConnectCallback? = null
     private val _gattDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
-    private val GATT_MAX_MTU_SIZE = 517
 
     private fun String.toUuid(): UUID = UUID.fromString(this)
     val SERVICE_UUID = "5E631523-6743-11ED-9022-0242AC120002".toUuid() //TODO: move as parameter
@@ -48,11 +56,52 @@ class BluetoothConnector @Inject constructor(
             handleDiscoveredServices(gatt, status)
         }
 
-        override fun onCharacteristicRead(
-            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
         ) {
-            println("RRR - read")
+            println("RRR - changed")
         }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int
+        ) {
+            println("RRR - descriptor write")
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            println("RRR - characteristic write")
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+            status: Int
+        ) {
+                println("RRR - characteristic read")
+        }
+
+        override fun onDescriptorRead(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int,
+            value: ByteArray
+        ) {
+            println("RRR - descriptor read")
+        }
+
+        override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+            println("RRR - mtu changed")
+        }
+
     }
 
 
@@ -61,7 +110,80 @@ class BluetoothConnector @Inject constructor(
         if (status == BluetoothGatt.GATT_SUCCESS) {
             with(gatt) {
                 printGattTable()
+                val bluetoothServices = getBluetoothServices(gatt)
+                setServiceNotifiers(gatt, bluetoothServices)
             }
+        }
+    }
+
+    private fun setServiceNotifiers(gatt: BluetoothGatt, services: List<BluetoothService>) {
+        services.forEach { service ->
+            service.characteristics.forEach { characteristic ->
+                if (characteristic.characteristicUUID == "72e80210-d54b-48ea-a00c-5ea3973cebc7") {
+                    println("RRR types: ${characteristic.characteristicTypes}")
+                }
+                when {
+                    characteristic.characteristic.isNotifiable() -> {
+                        enableNotifications(gatt, service.service, characteristic, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                    }
+                    characteristic.characteristic.isIndicatable() -> {
+                        enableNotifications(gatt, service.service, characteristic, BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun enableNotifications(gatt: BluetoothGatt, service: BluetoothGattService, characteristic: BluetoothCharacteristic, descriptorValue: ByteArray) {
+        gatt.setCharacteristicNotification(characteristic.characteristic, true)
+//        val descriptor = characteristic.characteristic.descriptors
+//
+//        descriptor.forEach {
+//            println("RRR ------------------------")
+//            println("RRR - ${characteristic.characteristic.uuid}")
+//
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//                gatt.writeDescriptor(it, descriptorValue)
+//            } else {
+//                it.value = descriptorValue
+//                gatt.writeDescriptor(it)
+//            }
+//        }
+
+        val descriptor1 = gatt.getService("72e80200-d54b-48ea-a00c-5ea3973cebc7".toUuid()).getCharacteristic("72e80210-d54b-48ea-a00c-5ea3973cebc7".toUuid()).descriptors.first()
+        val descriptor2 = service.getCharacteristic(characteristic.characteristicUUID.toUuid())?.descriptors?.first() ?: return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            gatt.writeDescriptor(descriptor2, descriptorValue)
+        } else {
+            descriptor2.value = descriptorValue
+            gatt.writeDescriptor(descriptor2)
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    private fun getBluetoothServices(gatt: BluetoothGatt): List<BluetoothService> {
+        return gatt.services.map { service ->
+            val characteristics = service.characteristics.map { characteristic ->
+                BluetoothCharacteristic(
+                    characteristicUUID = characteristic.uuid.toString(),
+                    characteristicTypes = characteristic.determineCharacteristicTypes(),
+                    characteristic = characteristic
+                )
+            }
+            BluetoothService(
+                service = service, //TODO remove this?
+                serviceUUID = service.uuid.toString(),
+                characteristics = characteristics
+            )
         }
     }
 
@@ -92,7 +214,10 @@ class BluetoothConnector @Inject constructor(
     private fun onDeviceConnected(gatt: BluetoothGatt) {
         addToGattList(gatt)
         bluetoothConnectCallback?.onDeviceConnected(gatt.device)
+
+        Handler(Looper.getMainLooper()).postDelayed({
         gatt.discoverServices()
+        }, 1000)
     }
 
     private fun onDeviceDisconnected(gatt: BluetoothGatt) {

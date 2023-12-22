@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.le.ScanResult
 import android.util.Log
 import com.example.bluetoothframework.domain.BluetoothDeviceDomain
+import com.example.bluetoothframework.domain.connect.connector.CharacteristicType
 import java.util.*
 
 @SuppressLint("MissingPermission")
@@ -44,6 +45,17 @@ fun BluetoothGatt.printGattTable() {
         Log.d("Connected Device","Service ${service.uuid}\nCharacteristics:\n$characteristicsTable")
     }
     Log.d("Connected Device","---------------------------------------------------------------")
+}
+
+fun BluetoothGattCharacteristic.determineCharacteristicTypes(): List<CharacteristicType> {
+    val types = mutableListOf<CharacteristicType>()
+    if (isReadable()) types.add(CharacteristicType.READABLE)
+    if (isWritable()) types.add(CharacteristicType.WRITABLE)
+    if (isNotifiable()) types.add(CharacteristicType.NOTIFIABLE)
+    if (isIndicatable()) types.add(CharacteristicType.INDICATABLE)
+    if (isWritableWithoutResponse()) types.add(CharacteristicType.WRITABLE_WITHOUT_RESPONSE)
+    if (types.isEmpty()) types.add(CharacteristicType.EMPTY)
+    return types
 }
 
 fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String>().apply {

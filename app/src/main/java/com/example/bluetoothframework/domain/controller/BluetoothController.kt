@@ -1,6 +1,7 @@
 package com.example.bluetoothframework.domain.controller
 
 import android.bluetooth.BluetoothDevice
+import com.example.bluetoothframework.domain.connect.BluetoothCharacteristicChangeCallback
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.connect.connector.BluetoothConnectorInterface
 import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
@@ -27,6 +28,10 @@ class BluetoothController @Inject constructor(
 
     override fun setConnectCallback(listener: BluetoothConnectCallback) {
         bluetoothConnector.setConnectionCallback(listener)
+    }
+
+    override fun setCharacteristicChangeCallback(listener: BluetoothCharacteristicChangeCallback) {
+        bluetoothConnector.setCharacteristicChangeCallback(listener)
     }
 
     override fun connectDevice(device: BluetoothDevice) {

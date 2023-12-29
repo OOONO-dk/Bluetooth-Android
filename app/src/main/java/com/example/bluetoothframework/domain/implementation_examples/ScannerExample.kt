@@ -1,5 +1,6 @@
 package com.example.bluetoothframework.domain.implementation_examples
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
@@ -27,6 +28,7 @@ class ScannerExample @Inject constructor(
     init {
         bluetoothController.setScanCallback(this)
         bluetoothController.setConnectCallback(this)
+        bluetoothController.setCharacteristicChangeCallback(this)
     }
 
     private val serviceUUIDs = listOf(
@@ -116,5 +118,10 @@ class ScannerExample @Inject constructor(
                 it.address != device.address
             }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDevice) {
+        println("RRR - Characteristic changed: ${byteArray.contentToString()}, for device: ${device.name}")
     }
 }

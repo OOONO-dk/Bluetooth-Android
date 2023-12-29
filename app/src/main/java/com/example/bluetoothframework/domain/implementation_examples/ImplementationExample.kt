@@ -16,9 +16,9 @@ import kotlinx.coroutines.flow.update
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-class ScannerExample @Inject constructor(
+class ImplementationExample @Inject constructor(
     private val bluetoothController: BluetoothControllerInterface
-) : ScannerExampleInterface {
+) : ImplementationExampleInterface {
     private val _scannedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     private val _connectedDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
 
@@ -131,6 +131,5 @@ class ScannerExample @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDevice, characteristicUuid: String) {
-        println("RRR - Characteristic changed: ${byteArray.contentToString()}, for device: ${device.name}, characteristic: $characteristicUuid")
     }
 }

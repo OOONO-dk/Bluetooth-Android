@@ -12,6 +12,7 @@ import android.content.Context
 import android.os.Build
 import com.example.bluetoothframework.domain.connect.BluetoothCharacteristicChangeCallback
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
+import com.example.bluetoothframework.domain.connect.write_queue.WriteEnqueuerInterface
 import com.example.bluetoothframework.domain.extensions.isIndicatable
 import com.example.bluetoothframework.domain.extensions.isNotifiable
 import com.example.bluetoothframework.domain.extensions.isWritable
@@ -27,7 +28,8 @@ import javax.inject.Inject
 
 @SuppressLint("MissingPermission")
 class BluetoothConnector @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    private val writeEnqueuer: WriteEnqueuerInterface
 ) : BluetoothConnectorInterface {
     private var writeDescriptorsBuffer: MutableMap<BluetoothGattDescriptor, CompletableDeferred<Unit>> = mutableMapOf()
     private var bluetoothConnectCallback: BluetoothConnectCallback? = null
@@ -44,6 +46,19 @@ class BluetoothConnector @Inject constructor(
         bluetoothCharacteristicChangeCallback = listener
     }
 
+    override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
+        writeEnqueuer.enqueueWrite(gatt) {
+            writeOperation(gatt, characteristic, payload)
+        }
+    }
+
+    private fun writeOperation(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
+        val writeType = getWriteType(characteristic)
+        characteristic.writeType = writeType
+        characteristic.value = payload
+        gatt.writeCharacteristic(characteristic)
+    }
+
     override fun disconnectDevice(device: BluetoothDevice) {
         _gattDevices.value.find { it.device.address == device.address }?.disconnect()
     }
@@ -51,13 +66,6 @@ class BluetoothConnector @Inject constructor(
     override fun connectDevice(device: BluetoothDevice) {
         if (deviceIsConnected(device)) return
         device.connectGatt(context, false, gattCallback)
-    }
-
-    override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
-        val writeType = getWriteType(characteristic)
-        characteristic.writeType = writeType
-        characteristic.value = payload
-        gatt.writeCharacteristic(characteristic)
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -91,11 +99,11 @@ class BluetoothConnector @Inject constructor(
         }
 
         override fun onCharacteristicWrite(
-            gatt: BluetoothGatt?,
+            gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic?,
             status: Int
         ) {
-            println("rrr - onCharacteristicWrite: $status")
+            writeEnqueuer.dequeueWrite(gatt)
         }
     }
 
@@ -177,12 +185,14 @@ class BluetoothConnector @Inject constructor(
     private fun onDeviceDisconnected(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
         bluetoothConnectCallback?.onDeviceDisconnected(gatt)
+        writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
     }
 
     private fun onConnectionFailed(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
         bluetoothConnectCallback?.onConnectionFail(gatt)
+        writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
     }
 

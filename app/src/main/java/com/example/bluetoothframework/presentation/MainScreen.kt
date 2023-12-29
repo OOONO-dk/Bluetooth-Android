@@ -74,7 +74,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                     ConnectedDevicesList(
                         state.connectedDevices,
                         blink = { viewModel.blinkSirene(it) }
-                    ) { viewModel.disconnectFromDevice(it) }
+                    ) { viewModel.disconnectDevice(it) }
                 }
 
                 Spacer(Modifier.height(10.dp))

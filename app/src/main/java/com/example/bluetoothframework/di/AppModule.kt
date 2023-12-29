@@ -3,9 +3,11 @@ package com.example.bluetoothframework.di
 import android.content.Context
 import com.example.bluetoothframework.domain.connect.connector.BluetoothConnector
 import com.example.bluetoothframework.domain.connect.connector.BluetoothConnectorInterface
+import com.example.bluetoothframework.domain.connect.write_queue.WriteEnqueuer
+import com.example.bluetoothframework.domain.connect.write_queue.WriteEnqueuerInterface
 import com.example.bluetoothframework.domain.scan.scanner.BluetoothScanner
-import com.example.bluetoothframework.domain.implementation_examples.ScannerExample
-import com.example.bluetoothframework.domain.implementation_examples.ScannerExampleInterface
+import com.example.bluetoothframework.domain.implementation_examples.ImplementationExample
+import com.example.bluetoothframework.domain.implementation_examples.ImplementationExampleInterface
 import com.example.bluetoothframework.domain.controller.BluetoothController
 import com.example.bluetoothframework.domain.controller.BluetoothControllerInterface
 import com.example.bluetoothframework.domain.scan.scanner.BluetoothScannerInterface
@@ -33,8 +35,8 @@ object AppModule {
     @Singleton
     fun provideBluetoothScanCallback(
         bluetoothController: BluetoothControllerInterface
-    ): ScannerExampleInterface {
-        return ScannerExample(bluetoothController)
+    ): ImplementationExampleInterface {
+        return ImplementationExample(bluetoothController)
     }
 
     @Singleton
@@ -49,10 +51,17 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun providesWriteEnqueuer(): WriteEnqueuerInterface {
+        return WriteEnqueuer()
+    }
+
+    @Singleton
+    @Provides
     fun providesBluetoothConnector(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        @Singleton writeEnqueuer: WriteEnqueuerInterface
     ): BluetoothConnectorInterface {
-        return BluetoothConnector(context)
+        return BluetoothConnector(context, writeEnqueuer)
     }
 
     @Singleton

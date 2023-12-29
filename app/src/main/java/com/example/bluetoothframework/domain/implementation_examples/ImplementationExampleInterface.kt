@@ -8,7 +8,7 @@ import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
 import kotlinx.coroutines.flow.StateFlow
 
-interface ScannerExampleInterface:
+interface ImplementationExampleInterface:
     BluetoothScanCallback,
     BluetoothConnectCallback,
     BluetoothCharacteristicChangeCallback {

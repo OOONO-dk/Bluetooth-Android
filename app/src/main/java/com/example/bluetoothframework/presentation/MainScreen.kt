@@ -2,6 +2,7 @@ package com.example.bluetoothframework.presentation
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -70,7 +71,10 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
                 Title("Connected Devices")
                 Container (Modifier.weight(1f)) {
-                    AvailableDevicesList(state.connectedDevices) { viewModel.connectToDevice(it)}
+                    ConnectedDevicesList(
+                        state.connectedDevices,
+                        blink = { viewModel.blinkSirene(it) }
+                    ) { viewModel.disconnectFromDevice(it) }
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -116,6 +120,28 @@ private fun AvailableDevicesList(
     }
 }
 
+@Composable
+private fun ConnectedDevicesList(
+    scannedDevices: List<BluetoothGatt>,
+    blink: (BluetoothGatt) -> Unit,
+    disconnect: (BluetoothDevice) -> Unit
+) {
+    LazyColumn (
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            Spacer(Modifier.height(13.dp))
+        }
+        items(scannedDevices) { gatt ->
+            Spacer(Modifier.height(7.dp))
+            ConnectedDevice(gatt.device, blink = { blink(gatt) }) { disconnect(gatt.device) }
+        }
+        item {
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
 @SuppressLint("MissingPermission")
 @Composable
 private fun DiscoveredDevice(
@@ -143,6 +169,42 @@ private fun DiscoveredDevice(
                 "connect",
                 Modifier.padding(horizontal = 12.dp)
             ) { onClick() }
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+@Composable
+private fun ConnectedDevice(
+    device: BluetoothDevice,
+    blink: () -> Unit,
+    disconnect: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth(0.9f)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White)
+    ) {
+        Row (
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "${device.name}\n${device.address}",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            ClickableText(
+                "blink",
+                Modifier.padding(horizontal = 12.dp)
+            ) { blink() }
+            ClickableText(
+                "disconnect",
+                Modifier.padding(horizontal = 12.dp)
+            ) { disconnect() }
         }
     }
 }

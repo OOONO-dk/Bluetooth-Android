@@ -1,6 +1,8 @@
 package com.example.bluetoothframework.domain.controller
 
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
 import com.example.bluetoothframework.domain.connect.BluetoothCharacteristicChangeCallback
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.connect.connector.BluetoothConnectorInterface
@@ -36,5 +38,17 @@ class BluetoothController @Inject constructor(
 
     override fun connectDevice(device: BluetoothDevice) {
         bluetoothConnector.connectDevice(device)
+    }
+
+    override fun disconnectDevice(device: BluetoothDevice) {
+        bluetoothConnector.disconnectDevice(device)
+    }
+
+    override fun writeToDevice(
+        gatt: BluetoothGatt,
+        characteristic: BluetoothGattCharacteristic,
+        payload: ByteArray
+    ) {
+        bluetoothConnector.writeToDevice(gatt, characteristic, payload)
     }
 }

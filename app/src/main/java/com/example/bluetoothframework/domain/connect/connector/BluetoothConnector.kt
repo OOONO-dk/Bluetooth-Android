@@ -14,6 +14,8 @@ import com.example.bluetoothframework.domain.connect.BluetoothCharacteristicChan
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.extensions.isIndicatable
 import com.example.bluetoothframework.domain.extensions.isNotifiable
+import com.example.bluetoothframework.domain.extensions.isWritable
+import com.example.bluetoothframework.domain.extensions.isWritableWithoutResponse
 import com.example.bluetoothframework.domain.extensions.printGattTable
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +34,8 @@ class BluetoothConnector @Inject constructor(
     private var bluetoothCharacteristicChangeCallback: BluetoothCharacteristicChangeCallback? = null
     private val _gattDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
 
+    // TODO: increase MTU size needed?
+
     override fun setConnectionCallback(listener: BluetoothConnectCallback) {
         bluetoothConnectCallback = listener
     }
@@ -49,6 +53,13 @@ class BluetoothConnector @Inject constructor(
         device.connectGatt(context, false, gattCallback)
     }
 
+    override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
+        val writeType = getWriteType(characteristic)
+        characteristic.writeType = writeType
+        characteristic.value = payload
+        gatt.writeCharacteristic(characteristic)
+    }
+
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             handleConnectionStateChange(gatt, status, newState)
@@ -63,7 +74,11 @@ class BluetoothConnector @Inject constructor(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            bluetoothCharacteristicChangeCallback?.onCharacteristicChanged(value, gatt.device)
+            bluetoothCharacteristicChangeCallback?.onCharacteristicChanged(
+                value,
+                gatt.device,
+                characteristic.uuid.toString()
+            )
         }
 
         override fun onDescriptorWrite(
@@ -74,9 +89,15 @@ class BluetoothConnector @Inject constructor(
             val completion = writeDescriptorsBuffer.remove(descriptor)
             completion?.complete(Unit)
         }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?,
+            status: Int
+        ) {
+            println("rrr - onCharacteristicWrite: $status")
+        }
     }
-
-
 
     private fun handleDiscoveredServices(gatt: BluetoothGatt, status: Int) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -149,23 +170,31 @@ class BluetoothConnector @Inject constructor(
 
     private fun onDeviceConnected(gatt: BluetoothGatt) {
         addToGattList(gatt)
-        bluetoothConnectCallback?.onDeviceConnected(gatt.device)
+        bluetoothConnectCallback?.onDeviceConnected(gatt)
         gatt.discoverServices()
     }
 
     private fun onDeviceDisconnected(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
-        bluetoothConnectCallback?.onDeviceDisconnected(gatt.device)
+        bluetoothConnectCallback?.onDeviceDisconnected(gatt)
         gatt.close()
     }
 
     private fun onConnectionFailed(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
-        bluetoothConnectCallback?.onConnectionFail(gatt.device)
+        bluetoothConnectCallback?.onConnectionFail(gatt)
         gatt.close()
     }
 
     private fun deviceIsConnected(device: BluetoothDevice): Boolean {
         return device.address in _gattDevices.value.map { it.device.address }
+    }
+
+    private fun getWriteType(characteristic: BluetoothGattCharacteristic): Int {
+        return when {
+            characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            characteristic.isWritableWithoutResponse() -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            else -> error("Characteristic ${characteristic.uuid} cannot be written to") //TODO test this
+        }
     }
 }

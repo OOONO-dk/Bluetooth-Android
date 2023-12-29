@@ -45,8 +45,8 @@ class BluetoothScanner @Inject constructor(
         isScanning = true
         bleScanner?.startScan(scannerConfig.scanFilter, scannerConfig.scanSettings, scanCallback)
 
-        deviceTimeout.checkDeviceDiscoverTimeout(scannerConfig.advertisingUpdateMillis) {
-            removeOldDevices(scannerConfig.discoverInactivityDurationMillis)
+        deviceTimeout.checkDeviceDiscoverTimeout(scannerConfig.advertisingCheckIntervalMillis) {
+            removeOldDevices(scannerConfig.advertisingExpirationIntervalMillis)
         }
     }
 

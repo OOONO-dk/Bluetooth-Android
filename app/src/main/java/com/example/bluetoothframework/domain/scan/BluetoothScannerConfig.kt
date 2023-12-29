@@ -6,6 +6,6 @@ import android.bluetooth.le.ScanSettings
 data class BluetoothScannerConfig(
     val scanSettings: ScanSettings,
     val scanFilter: List<ScanFilter>,
-    val advertisingUpdateMillis: Long,
-    val discoverInactivityDurationMillis: Long
+    val advertisingCheckIntervalMillis: Long,
+    val advertisingExpirationIntervalMillis: Long
 )

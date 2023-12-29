@@ -1,6 +1,8 @@
 package com.example.bluetoothframework.domain.controller
 
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
 import com.example.bluetoothframework.domain.connect.BluetoothCharacteristicChangeCallback
 import com.example.bluetoothframework.domain.connect.BluetoothConnectCallback
 import com.example.bluetoothframework.domain.scan.BluetoothScanCallback
@@ -13,4 +15,6 @@ interface BluetoothControllerInterface {
     fun setConnectCallback(listener: BluetoothConnectCallback)
     fun setCharacteristicChangeCallback(listener: BluetoothCharacteristicChangeCallback)
     fun connectDevice(device: BluetoothDevice)
+    fun disconnectDevice(device: BluetoothDevice)
+    fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray)
 }

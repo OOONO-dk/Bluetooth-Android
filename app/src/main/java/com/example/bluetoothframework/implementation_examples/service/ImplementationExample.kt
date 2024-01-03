@@ -7,8 +7,9 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.os.ParcelUuid
-import com.example.bluetoothframework.controller.BluetoothControllerInterface
-import com.example.bluetoothframework.model.BluetoothScannerConfig
+import com.example.bluetoothframework.control.controller.BluetoothControllerInterface
+import com.example.bluetoothframework.model.data.BluetoothScannerConfig
+import com.example.bluetoothframework.model.enums.ConnectionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,9 +29,7 @@ class ImplementationExample @Inject constructor(
         get() = _connectedDevices.asStateFlow()
 
     init {
-        bluetoothController.setScanDelegate(this)
-        bluetoothController.setConnectDelegate(this)
-        bluetoothController.setCharacteristicChangeDelegate(this)
+        bluetoothController.setBluetoothDeviceListener(this)
     }
 
     private val serviceUUIDs = listOf(
@@ -83,6 +82,10 @@ class ImplementationExample @Inject constructor(
         bluetoothController.writeToDevice(gatt, characteristic, payload)
     }
 
+    override fun onConnectionStateUpdate(gatt: BluetoothGatt, newState: ConnectionState) {
+        TODO("Not yet implemented")
+    }
+
     /***************************
      * Delegates.
      **************************/
@@ -92,10 +95,10 @@ class ImplementationExample @Inject constructor(
         }
     }
 
-    override fun onDeviceRemoved(removedDeviceAddress: String) {
+    override fun onDeviceRemoved(address: String) {
         _scannedDevices.update {
             _scannedDevices.value.filter {
-                it.address != removedDeviceAddress
+                it.address != address
             }
         }
     }
@@ -130,7 +133,7 @@ class ImplementationExample @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    override fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDevice, characteristicUuid: String) {
+    override fun onCharacteristicChanged(byteArray: ByteArray, gatt: BluetoothGatt, characteristicUuid: String) {
         //println("RRR - onCharacteristicChanged: ${device.address} - ${characteristicUuid}")
     }
 }

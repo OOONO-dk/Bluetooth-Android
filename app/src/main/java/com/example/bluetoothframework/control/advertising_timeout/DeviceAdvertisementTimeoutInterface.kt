@@ -1,6 +1,6 @@
-package com.example.bluetoothframework.scanning.utils.advertising_timeout
+package com.example.bluetoothframework.control.advertising_timeout
 
-interface DeviceDiscoverTimeoutInterface {
+interface DeviceAdvertisementTimeoutInterface {
     fun checkDeviceDiscoverTimeout(advertisingUpdateMillis: Long, removeOldDevices: () -> Unit)
     fun stopDeviceDiscoverTimeoutCheck()
 }

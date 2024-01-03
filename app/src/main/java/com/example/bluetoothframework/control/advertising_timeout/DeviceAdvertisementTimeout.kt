@@ -1,4 +1,4 @@
-package com.example.bluetoothframework.scanning.utils.advertising_timeout
+package com.example.bluetoothframework.control.advertising_timeout
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -7,7 +7,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-class DeviceDiscoverTimeout @Inject constructor() : DeviceDiscoverTimeoutInterface {
+class DeviceAdvertisementTimeout @Inject constructor() : DeviceAdvertisementTimeoutInterface {
     private var isRunning = false
     private var job: Job? = null
 

@@ -8,11 +8,11 @@ import com.example.bluetoothframework.connection.enqueue.WriteEnqueuerInterface
 import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
 import com.example.bluetoothframework.implementation_examples.service.ImplementationExample
 import com.example.bluetoothframework.implementation_examples.service.ImplementationExampleInterface
-import com.example.bluetoothframework.controller.BluetoothController
-import com.example.bluetoothframework.controller.BluetoothControllerInterface
+import com.example.bluetoothframework.control.controller.BluetoothController
+import com.example.bluetoothframework.control.controller.BluetoothControllerInterface
 import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
-import com.example.bluetoothframework.scanning.utils.advertising_timeout.DeviceDiscoverTimeout
-import com.example.bluetoothframework.scanning.utils.advertising_timeout.DeviceDiscoverTimeoutInterface
+import com.example.bluetoothframework.control.advertising_timeout.DeviceAdvertisementTimeout
+import com.example.bluetoothframework.control.advertising_timeout.DeviceAdvertisementTimeoutInterface
 import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTracker
 import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTrackerInterface
 import dagger.Module
@@ -33,7 +33,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBluetoothScanDelegate(
+    fun providesImplementationExample(
         bluetoothController: BluetoothControllerInterface
     ): ImplementationExampleInterface {
         return ImplementationExample(bluetoothController)
@@ -43,10 +43,9 @@ object AppModule {
     @Provides
     fun providesBluetoothScanner(
         @ApplicationContext context: Context,
-        @Singleton scanTracker: ScanTrackerInterface,
-        @Singleton deviceDiscoverTimeout: DeviceDiscoverTimeoutInterface
+        @Singleton scanTracker: ScanTrackerInterface
     ): BluetoothScannerInterface {
-        return BluetoothScanner(context, scanTracker, deviceDiscoverTimeout)
+        return BluetoothScanner(context, scanTracker)
     }
 
     @Singleton
@@ -69,8 +68,9 @@ object AppModule {
     fun providesBluetoothController(
         @Singleton bluetoothScanner: BluetoothScannerInterface,
         @Singleton bluetoothConnector: BluetoothConnectorInterface,
+        @Singleton deviceAdvertisementTimeout: DeviceAdvertisementTimeoutInterface
     ): BluetoothControllerInterface {
-        return BluetoothController(bluetoothScanner, bluetoothConnector)
+        return BluetoothController(bluetoothScanner, bluetoothConnector, deviceAdvertisementTimeout)
     }
 
     @Singleton
@@ -81,7 +81,7 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun providesDeviceDiscoverTimeout(): DeviceDiscoverTimeoutInterface {
-        return DeviceDiscoverTimeout()
+    fun providesDeviceDiscoverTimeout(): DeviceAdvertisementTimeoutInterface {
+        return DeviceAdvertisementTimeout()
     }
 }

@@ -1,4 +1,4 @@
-package com.example.bluetoothframework.model
+package com.example.bluetoothframework.model.data
 
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings

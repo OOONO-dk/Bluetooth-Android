@@ -1,23 +1,10 @@
 package com.example.bluetoothframework.extensions
 
-import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.le.ScanResult
 import android.util.Log
-import com.example.bluetoothframework.model.DiscoveredBluetoothDevice
-import java.util.*
-
-@SuppressLint("MissingPermission")
-fun ScanResult.toDiscoveredBluetoothDevice(): DiscoveredBluetoothDevice {
-    return DiscoveredBluetoothDevice(
-        rssi = rssi,
-        name = device.name,
-        address = device.address,
-        discoverTimestamp = System.currentTimeMillis()
-    )
-}
+import java.util.UUID
 
 fun BluetoothGatt.printGattTable() {
     if (services.isEmpty()) {

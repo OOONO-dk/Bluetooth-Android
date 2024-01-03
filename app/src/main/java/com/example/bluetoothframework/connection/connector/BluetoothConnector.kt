@@ -11,8 +11,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.example.bluetoothframework.connection.delegates.BluetoothCharacteristicChangeDelegate
-import com.example.bluetoothframework.connection.delegates.BluetoothConnectDelegate
+import com.example.bluetoothframework.connection.delegates.BluetoothConnectForwarderDelegate
 import com.example.bluetoothframework.connection.enqueue.WriteEnqueuerInterface
 import com.example.bluetoothframework.extensions.isIndicatable
 import com.example.bluetoothframework.extensions.isNotifiable
@@ -33,16 +32,11 @@ class BluetoothConnector @Inject constructor(
     private val writeEnqueuer: WriteEnqueuerInterface
 ) : BluetoothConnectorInterface {
     private var writeDescriptorsBuffer: MutableMap<BluetoothGattDescriptor, CompletableDeferred<Unit>> = mutableMapOf()
-    private var bluetoothConnectDelegate: BluetoothConnectDelegate? = null
-    private var bluetoothCharacteristicChangeDelegate: BluetoothCharacteristicChangeDelegate? = null
+    private var bluetoothConnectForwarderDelegate: BluetoothConnectForwarderDelegate? = null
     private val _gattDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
 
-    override fun setConnectionDelegate(listener: BluetoothConnectDelegate) {
-        bluetoothConnectDelegate = listener
-    }
-
-    override fun setCharacteristicChangeDelegate(listener: BluetoothCharacteristicChangeDelegate) {
-        bluetoothCharacteristicChangeDelegate = listener
+    override fun setConnectionDelegate(listener: BluetoothConnectForwarderDelegate) {
+        bluetoothConnectForwarderDelegate = listener
     }
 
     override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
@@ -87,9 +81,9 @@ class BluetoothConnector @Inject constructor(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            bluetoothCharacteristicChangeDelegate?.onCharacteristicChanged(
+            bluetoothConnectForwarderDelegate?.onCharacteristicChanged(
                 value,
-                gatt.device,
+                gatt,
                 characteristic.uuid.toString()
             )
         }
@@ -183,20 +177,20 @@ class BluetoothConnector @Inject constructor(
 
     private fun onDeviceConnected(gatt: BluetoothGatt) {
         addToGattList(gatt)
-        bluetoothConnectDelegate?.onDeviceConnected(gatt)
+        bluetoothConnectForwarderDelegate?.onDeviceConnected(gatt)
         gatt.discoverServices()
     }
 
     private fun onDeviceDisconnected(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
-        bluetoothConnectDelegate?.onDeviceDisconnected(gatt)
+        bluetoothConnectForwarderDelegate?.onDeviceDisconnected(gatt)
         writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
     }
 
     private fun onConnectionFailed(gatt: BluetoothGatt) {
         removeFromGattList(gatt)
-        bluetoothConnectDelegate?.onConnectionFail(gatt)
+        bluetoothConnectForwarderDelegate?.onConnectionFail(gatt)
         writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
     }

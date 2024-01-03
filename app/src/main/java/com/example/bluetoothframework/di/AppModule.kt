@@ -1,20 +1,20 @@
 package com.example.bluetoothframework.di
 
 import android.content.Context
-import com.example.bluetoothframework.domain.connect.connector.BluetoothConnector
-import com.example.bluetoothframework.domain.connect.connector.BluetoothConnectorInterface
-import com.example.bluetoothframework.domain.connect.write_queue.WriteEnqueuer
-import com.example.bluetoothframework.domain.connect.write_queue.WriteEnqueuerInterface
-import com.example.bluetoothframework.domain.scan.scanner.BluetoothScanner
-import com.example.bluetoothframework.domain.implementation_examples.ImplementationExample
-import com.example.bluetoothframework.domain.implementation_examples.ImplementationExampleInterface
-import com.example.bluetoothframework.domain.controller.BluetoothController
-import com.example.bluetoothframework.domain.controller.BluetoothControllerInterface
-import com.example.bluetoothframework.domain.scan.scanner.BluetoothScannerInterface
-import com.example.bluetoothframework.domain.scan.discover_timeout.DeviceDiscoverTimeout
-import com.example.bluetoothframework.domain.scan.discover_timeout.DeviceDiscoverTimeoutInterface
-import com.example.bluetoothframework.domain.scan.tracker.ScanTracker
-import com.example.bluetoothframework.domain.scan.tracker.ScanTrackerInterface
+import com.example.bluetoothframework.connection.connector.BluetoothConnector
+import com.example.bluetoothframework.connection.connector.BluetoothConnectorInterface
+import com.example.bluetoothframework.connection.enqueue.WriteEnqueuer
+import com.example.bluetoothframework.connection.enqueue.WriteEnqueuerInterface
+import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
+import com.example.bluetoothframework.implementation_examples.service.ImplementationExample
+import com.example.bluetoothframework.implementation_examples.service.ImplementationExampleInterface
+import com.example.bluetoothframework.controller.BluetoothController
+import com.example.bluetoothframework.controller.BluetoothControllerInterface
+import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
+import com.example.bluetoothframework.scanning.utils.advertising_timeout.DeviceDiscoverTimeout
+import com.example.bluetoothframework.scanning.utils.advertising_timeout.DeviceDiscoverTimeoutInterface
+import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTracker
+import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTrackerInterface
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,7 +33,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBluetoothScanCallback(
+    fun provideBluetoothScanDelegate(
         bluetoothController: BluetoothControllerInterface
     ): ImplementationExampleInterface {
         return ImplementationExample(bluetoothController)

@@ -3,8 +3,20 @@ package com.example.bluetoothframework.extensions
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.le.ScanResult
 import android.util.Log
+import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
+import com.example.bluetoothframework.model.enums.ConnectionState
 import java.util.UUID
+
+fun ScanResult.toBluetoothDeviceInfo(): BluetoothDeviceInfo {
+    return BluetoothDeviceInfo(
+        device = device,
+        lastSeen = System.currentTimeMillis(),
+        rssi = rssi,
+        connectionState = ConnectionState.DISCOVERED
+    )
+}
 
 fun BluetoothGatt.printGattTable() {
     if (services.isEmpty()) {

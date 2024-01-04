@@ -1,14 +1,15 @@
 package com.example.bluetoothframework.control.controller
 
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanResult
 import com.example.bluetoothframework.connection.connector.BluetoothConnectorInterface
 import com.example.bluetoothframework.control.advertising_timeout.DeviceAdvertisementTimeoutInterface
 import com.example.bluetoothframework.control.delegates.BluetoothDeviceDelegate
+import com.example.bluetoothframework.extensions.toBluetoothDeviceInfo
+import com.example.bluetoothframework.model.data.BluetoothConnectData
 import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothScannerConfig
+import com.example.bluetoothframework.model.data.BluetoothWriteData
 import com.example.bluetoothframework.model.enums.ConnectionState
 import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,15 +48,25 @@ class BluetoothController @Inject constructor(
     }
 
     override fun onDeviceConnected(gatt: BluetoothGatt) {
-        bluetoothDeviceDelegate?.onDeviceConnected(gatt)
+        setGattForDevice(gatt)?.let {
+            updateConnectionState(it, ConnectionState.CONNECTED)
+        }
+
+        //TODO discover services logic
     }
 
     override fun onDeviceDisconnected(gatt: BluetoothGatt) {
-        bluetoothDeviceDelegate?.onDeviceDisconnected(gatt)
+        getDeviceFromGatt(gatt)?.let {
+            removeFromDevices(it)
+            bluetoothDeviceDelegate?.onDeviceDisconnected(it)
+        }
     }
 
     override fun onConnectionFail(gatt: BluetoothGatt) {
-        bluetoothDeviceDelegate?.onConnectionFail(gatt)
+        getDeviceFromGatt(gatt)?.let {
+            removeFromDevices(it)
+            bluetoothDeviceDelegate?.onConnectionFail(it)
+        }
     }
 
     override fun onCharacteristicChanged(
@@ -63,7 +74,9 @@ class BluetoothController @Inject constructor(
         gatt: BluetoothGatt,
         characteristicUuid: String
     ) {
-        bluetoothDeviceDelegate?.onCharacteristicChanged(byteArray, gatt, characteristicUuid)
+        getDeviceFromGatt(gatt)?.let {
+            bluetoothDeviceDelegate?.onCharacteristicChanged(byteArray, it, characteristicUuid)
+        }
     }
 
 
@@ -82,20 +95,22 @@ class BluetoothController @Inject constructor(
         deviceAdvertisementTimeout.stopDeviceDiscoverTimeoutCheck()
     }
 
-    override fun connectDevice(device: BluetoothDevice) {
-        bluetoothConnector.connectDevice(device)
+    override fun connectDevices(devices: List<BluetoothConnectData>) {
+        for (data in devices) {
+            updateConnectionState(data.device, ConnectionState.CONNECTING)
+            bluetoothConnector.connectDevice(data.device.device)
+        }
     }
 
-    override fun disconnectDevice(device: BluetoothDevice) {
-        bluetoothConnector.disconnectDevice(device)
+    override fun disconnectDevices(devices: List<BluetoothDeviceInfo>) {
+        for (device in devices) {
+            updateConnectionState(device, ConnectionState.DISCONNECTING)
+            bluetoothConnector.disconnectDevice(device.device)
+        }
     }
 
-    override fun writeToDevice(
-        gatt: BluetoothGatt,
-        characteristic: BluetoothGattCharacteristic,
-        payload: ByteArray
-    ) {
-        bluetoothConnector.writeToDevice(gatt, characteristic, payload)
+    override fun writeToDevices(devices: List<BluetoothWriteData>) {
+        //bluetoothConnector.writeToDevice(gatt, characteristic, payload)
     }
 
 
@@ -103,20 +118,17 @@ class BluetoothController @Inject constructor(
      * Scan functions
      */
     private fun onScanResult(result: ScanResult) {
-        val newDevice = BluetoothDeviceInfo(
-            device = result.device,
-            lastSeen = System.currentTimeMillis(),
-            rssi = result.rssi,
-            connectionState = ConnectionState.DISCOVERED
-        )
-
+        val newDevice = result.toBluetoothDeviceInfo()
         val updatedList = updateDeviceInfo(result)
 
         _devices.update { devices ->
             val deviceExists = updatedList != devices
-            if (deviceExists) updatedList else {
-                bluetoothDeviceDelegate?.onDeviceDiscovered(result.device)
+
+            if (!deviceExists) {
+                bluetoothDeviceDelegate?.onDeviceDiscovered(newDevice)
                 devices + newDevice
+            } else {
+                updatedList
             }
         }
     }
@@ -144,7 +156,7 @@ class BluetoothController @Inject constructor(
         }
 
         val removedDevices =  _devices.value - updatedList.toSet()
-        removedDevices.forEach { bluetoothDeviceDelegate?.onDeviceRemoved(it.device.address) }
+        removedDevices.forEach { bluetoothDeviceDelegate?.onDeviceStoppedAdvertising(it) }
 
         _devices.value = updatedList
     }
@@ -153,4 +165,48 @@ class BluetoothController @Inject constructor(
     /**
      * Connect functions
      */
+    // if services empty, discover services
+    // if services not empty, create new list
+    // if services has not characteristcs, discover characteristics
+    // if services has characteristics, use the listed list
+    // Convert the string uuids to real stuff
+    private fun getDeviceFromGatt(gatt: BluetoothGatt): BluetoothDeviceInfo? {
+        return _devices.value.firstOrNull { it.device.address == gatt.device.address }
+    }
+
+    private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
+        _devices.update { devices ->
+            devices.map {
+                if (it.device.address == device.device.address) {
+                    bluetoothDeviceDelegate?.onConnectionStateUpdate(device, connectionState)
+                    it.copy(connectionState = connectionState)
+                } else {
+                    it
+                }
+            }
+        }
+
+    }
+
+    private fun removeFromDevices(device: BluetoothDeviceInfo) {
+        _devices.update { devices ->
+            devices.filter { it.device.address != device.device.address }
+        }
+    }
+
+    private fun setGattForDevice(gatt: BluetoothGatt): BluetoothDeviceInfo? {
+        var device: BluetoothDeviceInfo? = null
+        _devices.update { devices ->
+            devices.map {
+                if (it.device.address == gatt.device.address) {
+                    val updatedDevice = it.copy(gatt = gatt)
+                    device = updatedDevice
+                    updatedDevice
+                } else {
+                    it
+                }
+            }
+        }
+        return device
+    }
 }

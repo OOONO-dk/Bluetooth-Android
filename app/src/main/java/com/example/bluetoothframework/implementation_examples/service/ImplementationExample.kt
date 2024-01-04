@@ -71,11 +71,11 @@ class ImplementationExample @Inject constructor(
     }
 
     override fun connectDevice(device: BluetoothDevice) {
-        bluetoothController.connectDevice(device)
+        bluetoothController.connectDevices(device)
     }
 
     override fun disconnectDevice(device: BluetoothDevice) {
-        bluetoothController.disconnectDevice(device)
+        bluetoothController.disconnectDevices(device)
     }
 
     override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {

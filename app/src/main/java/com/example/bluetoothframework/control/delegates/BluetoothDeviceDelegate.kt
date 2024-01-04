@@ -1,16 +1,14 @@
 package com.example.bluetoothframework.control.delegates
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
+import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.enums.ConnectionState
 
 interface BluetoothDeviceDelegate {
-    fun onConnectionStateUpdate(gatt: BluetoothGatt, newState: ConnectionState)
-    fun onDeviceDiscovered(newDevice: BluetoothDevice)
-    fun onDeviceRemoved(address: String)
+    fun onConnectionStateUpdate(device: BluetoothDeviceInfo, newState: ConnectionState)
+    fun onDeviceDiscovered(device: BluetoothDeviceInfo)
+    fun onDeviceStoppedAdvertising(device: BluetoothDeviceInfo)
     fun onScanFailed()
-    fun onDeviceConnected(gatt: BluetoothGatt)
-    fun onDeviceDisconnected(gatt: BluetoothGatt)
-    fun onConnectionFail(gatt: BluetoothGatt)
-    fun onCharacteristicChanged(byteArray: ByteArray, gatt: BluetoothGatt, characteristicUuid: String)
+    fun onDeviceDisconnected(device: BluetoothDeviceInfo)
+    fun onConnectionFail(device: BluetoothDeviceInfo)
+    fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDeviceInfo, characteristicUuid: String)
 }

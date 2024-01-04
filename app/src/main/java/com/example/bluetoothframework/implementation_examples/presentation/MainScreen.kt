@@ -2,7 +2,6 @@ package com.example.bluetoothframework.implementation_examples.presentation
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -31,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
+import com.example.bluetoothframework.model.enums.ConnectionState
 import com.example.bluetoothframework.ui.theme.BluetoothFrameworkTheme
 
 @Composable
@@ -64,7 +65,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
                 Title("Available Devices")
                 Container (Modifier.weight(1f)) {
-                    AvailableDevicesList(state.scannedDevices) { viewModel.connectToDevice(it)}
+                    AvailableDevicesList(state.filter { it.connectionState == ConnectionState.DISCOVERED }) { viewModel.connectToDevice(it)}
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -72,7 +73,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                 Title("Connected Devices")
                 Container (Modifier.weight(1f)) {
                     ConnectedDevicesList(
-                        state.connectedDevices,
+                        state.filter { it.connectionState == ConnectionState.CONNECTED },
                         blink = { viewModel.blinkSirene(it) }
                     ) { viewModel.disconnectDevice(it) }
                 }
@@ -101,8 +102,8 @@ private fun ClickableText(
 
 @Composable
 private fun AvailableDevicesList(
-    scannedDevices: List<BluetoothDevice>,
-    onConnectClick: (BluetoothDevice) -> Unit
+    devices: List<BluetoothDeviceInfo>,
+    onConnectClick: (BluetoothDeviceInfo) -> Unit
 ) {
     LazyColumn (
         horizontalAlignment = Alignment.CenterHorizontally
@@ -110,9 +111,9 @@ private fun AvailableDevicesList(
         item {
             Spacer(Modifier.height(13.dp))
         }
-        items(scannedDevices) { device ->
+        items(devices) { device ->
             Spacer(Modifier.height(7.dp))
-            DiscoveredDevice(device) { onConnectClick(device) }
+            DiscoveredDevice(device.device) { onConnectClick(device) }
         }
         item {
             Spacer(Modifier.height(20.dp))
@@ -122,9 +123,9 @@ private fun AvailableDevicesList(
 
 @Composable
 private fun ConnectedDevicesList(
-    scannedDevices: List<BluetoothGatt>,
-    blink: (BluetoothGatt) -> Unit,
-    disconnect: (BluetoothDevice) -> Unit
+    devices: List<BluetoothDeviceInfo>,
+    blink: (BluetoothDeviceInfo) -> Unit,
+    disconnect: (BluetoothDeviceInfo) -> Unit
 ) {
     LazyColumn (
         horizontalAlignment = Alignment.CenterHorizontally
@@ -132,9 +133,9 @@ private fun ConnectedDevicesList(
         item {
             Spacer(Modifier.height(13.dp))
         }
-        items(scannedDevices) { gatt ->
+        items(devices) { device ->
             Spacer(Modifier.height(7.dp))
-            ConnectedDevice(gatt.device, blink = { blink(gatt) }) { disconnect(gatt.device) }
+            ConnectedDevice(device.device, blink = { blink(device) }) { disconnect(device) }
         }
         item {
             Spacer(Modifier.height(20.dp))

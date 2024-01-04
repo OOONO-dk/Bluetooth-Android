@@ -1,14 +1,14 @@
 package com.example.bluetoothframework.implementation_examples.service
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.os.ParcelUuid
 import com.example.bluetoothframework.control.controller.BluetoothControllerInterface
+import com.example.bluetoothframework.model.data.BluetoothConnectData
+import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothScannerConfig
+import com.example.bluetoothframework.model.data.BluetoothWriteData
 import com.example.bluetoothframework.model.enums.ConnectionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,13 +20,10 @@ import javax.inject.Inject
 class ImplementationExample @Inject constructor(
     private val bluetoothController: BluetoothControllerInterface
 ) : ImplementationExampleInterface {
-    private val _scannedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
-    private val _connectedDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
+    private val _devices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
 
-    override val scannedDevices: StateFlow<List<BluetoothDevice>>
-        get() = _scannedDevices.asStateFlow()
-    override val connectedDevices: StateFlow<List<BluetoothGatt>>
-        get() = _connectedDevices.asStateFlow()
+    override val devices: StateFlow<List<BluetoothDeviceInfo>>
+        get() = _devices.asStateFlow()
 
     init {
         bluetoothController.setBluetoothDeviceListener(this)
@@ -35,10 +32,6 @@ class ImplementationExample @Inject constructor(
     private val serviceUUIDs = listOf(
         // Sirene
         "5E631523-6743-11ED-9022-0242AC120002",
-        //"5E630000-6743-11ED-9022-0242AC120002",
-        //"5E63F720-6743-11ED-9022-0242AC120002",
-        //"5E63F721-6743-11ED-9022-0242AC120002",
-        //"5E63F722-6743-11ED-9022-0242AC120002",
 
         // Co-driver
         "00001523-1212-efde-1523-785feabcd123",
@@ -70,36 +63,29 @@ class ImplementationExample @Inject constructor(
         bluetoothController.stopDiscovery()
     }
 
-    override fun connectDevice(device: BluetoothDevice) {
-        bluetoothController.connectDevices(device)
+    override fun connectDevices(devices: List<BluetoothConnectData>) {
+        bluetoothController.connectDevices(devices)
     }
 
-    override fun disconnectDevice(device: BluetoothDevice) {
-        bluetoothController.disconnectDevices(device)
+    override fun disconnectDevices(devices: List<BluetoothDeviceInfo>) {
+        bluetoothController.disconnectDevices(devices)
     }
 
-    override fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
-        bluetoothController.writeToDevice(gatt, characteristic, payload)
+    override fun writeToDevices(devices: List<BluetoothWriteData>) {
+        bluetoothController.writeToDevices(devices)
     }
 
-    override fun onConnectionStateUpdate(gatt: BluetoothGatt, newState: ConnectionState) {
-        TODO("Not yet implemented")
+
+    override fun onConnectionStateUpdate(device: BluetoothDeviceInfo, newState: ConnectionState) {
+        updateDeviceState(device, newState)
     }
 
     /***************************
      * Delegates.
      **************************/
-    override fun onDeviceDiscovered(newDevice: BluetoothDevice) {
-        _scannedDevices.update { scannedDevices ->
-            scannedDevices + newDevice
-        }
-    }
-
-    override fun onDeviceRemoved(address: String) {
-        _scannedDevices.update {
-            _scannedDevices.value.filter {
-                it.address != address
-            }
+    override fun onDeviceDiscovered(device: BluetoothDeviceInfo) {
+        _devices.update { devices ->
+            devices + device
         }
     }
 
@@ -107,33 +93,40 @@ class ImplementationExample @Inject constructor(
         startDiscovery()
     }
 
-    override fun onDeviceConnected(gatt: BluetoothGatt) {
-        println("RRR - onDeviceConnected: ${gatt.device.address}")
-        _connectedDevices.update { connectedDevices ->
-            connectedDevices + gatt
-        }
+    override fun onDeviceDisconnected(device: BluetoothDeviceInfo) {
+        removeDevice(device)
     }
 
-    override fun onDeviceDisconnected(gatt: BluetoothGatt) {
-        println("RRR - onDeviceDisconnected: ${gatt.device.address}")
-        _connectedDevices.update {
-            _connectedDevices.value.filter {
-                it.device.address != gatt.device.address
+    override fun onConnectionFail(device: BluetoothDeviceInfo) {
+        removeDevice(device)
+    }
+
+    override fun onDeviceStoppedAdvertising(device: BluetoothDeviceInfo) {
+        removeDevice(device)
+    }
+
+    private fun removeDevice(device: BluetoothDeviceInfo) {
+        _devices.update { devices ->
+            devices.filter {
+                it.device.address != device.device.address
             }
         }
     }
 
-    override fun onConnectionFail(gatt: BluetoothGatt) {
-        println("RRR - onConnectionFail: ${gatt.device.address}")
-        _connectedDevices.update {
-            _connectedDevices.value.filter {
-                it.device.address != gatt.device.address
+    private fun updateDeviceState(device: BluetoothDeviceInfo, newState: ConnectionState) {
+        _devices.update { devices ->
+            devices.map {
+                if (it.device.address == device.device.address) {
+                    it.copy(connectionState = newState)
+                } else {
+                    it
+                }
             }
         }
     }
 
     @SuppressLint("MissingPermission")
-    override fun onCharacteristicChanged(byteArray: ByteArray, gatt: BluetoothGatt, characteristicUuid: String) {
+    override fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDeviceInfo, characteristicUuid: String) {
         //println("RRR - onCharacteristicChanged: ${device.address} - ${characteristicUuid}")
     }
 }

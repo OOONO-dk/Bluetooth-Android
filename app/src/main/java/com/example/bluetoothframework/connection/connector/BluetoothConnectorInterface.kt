@@ -7,7 +7,12 @@ import com.example.bluetoothframework.connection.delegates.BluetoothConnectForwa
 
 interface BluetoothConnectorInterface {
     fun connectDevice(device: BluetoothDevice)
-    fun disconnectDevice(device: BluetoothDevice)
+    fun disconnectDevice(gatt: BluetoothGatt)
     fun setConnectionDelegate(listener: BluetoothConnectForwarderDelegate)
+    fun getCharacteristics(gatt: BluetoothGatt, serviceUuid: String): List<BluetoothGattCharacteristic>
     fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray)
+    fun discoverServices(gatt: BluetoothGatt)
+    fun setServiceNotifiers(gatt: BluetoothGatt)
+    suspend fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic)
+    fun getCharacteristicFromUuid(gatt: BluetoothGatt, serviceUuid: String, characteristicUuid: String): BluetoothGattCharacteristic?
 }

@@ -12,8 +12,11 @@ import com.example.bluetoothframework.model.data.BluetoothScannerConfig
 import com.example.bluetoothframework.model.data.BluetoothWriteData
 import com.example.bluetoothframework.model.enums.ConnectionState
 import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class BluetoothController @Inject constructor(
@@ -50,9 +53,8 @@ class BluetoothController @Inject constructor(
     override fun onDeviceConnected(gatt: BluetoothGatt) {
         setGattForDevice(gatt)?.let {
             updateConnectionState(it, ConnectionState.CONNECTED)
+            bluetoothConnector.discoverServices(gatt)
         }
-
-        //TODO discover services logic
     }
 
     override fun onDeviceDisconnected(gatt: BluetoothGatt) {
@@ -79,6 +81,10 @@ class BluetoothController @Inject constructor(
         }
     }
 
+    override fun onServicesDiscovered(gatt: BluetoothGatt) {
+        getDeviceFromGatt(gatt)?.let { handleServices(it) }
+    }
+
 
     /**
      * Bluetooth controls
@@ -97,20 +103,27 @@ class BluetoothController @Inject constructor(
 
     override fun connectDevices(devices: List<BluetoothConnectData>) {
         for (data in devices) {
+            if (deviceIsConnected(data.device)) continue
             updateConnectionState(data.device, ConnectionState.CONNECTING)
             bluetoothConnector.connectDevice(data.device.device)
+            if (data.services.isNotEmpty()) setServicesForDevice(data)
         }
     }
 
     override fun disconnectDevices(devices: List<BluetoothDeviceInfo>) {
         for (device in devices) {
             updateConnectionState(device, ConnectionState.DISCONNECTING)
-            bluetoothConnector.disconnectDevice(device.device)
+            getDeviceGatt(device)?.let { bluetoothConnector.disconnectDevice(it) }
         }
     }
 
     override fun writeToDevices(devices: List<BluetoothWriteData>) {
-        //bluetoothConnector.writeToDevice(gatt, characteristic, payload)
+        for (data in devices) {
+            getDeviceGatt(data.device)?.let { gatt ->
+                val characteristic = bluetoothConnector.getCharacteristicFromUuid(gatt, data.serviceUuid, data.characteristicUuid)
+                characteristic?.let { bluetoothConnector.writeToDevice(gatt, it, data.payload) }
+            }
+        }
     }
 
 
@@ -118,15 +131,15 @@ class BluetoothController @Inject constructor(
      * Scan functions
      */
     private fun onScanResult(result: ScanResult) {
-        val newDevice = result.toBluetoothDeviceInfo()
+        val device = result.toBluetoothDeviceInfo()
         val updatedList = updateDeviceInfo(result)
 
         _devices.update { devices ->
-            val deviceExists = updatedList != devices
+            val deviceExists = devices.any { it.device.address == device.device.address }
 
             if (!deviceExists) {
-                bluetoothDeviceDelegate?.onDeviceDiscovered(newDevice)
-                devices + newDevice
+                bluetoothDeviceDelegate?.onDeviceDiscovered(device)
+                devices + device
             } else {
                 updatedList
             }
@@ -151,25 +164,20 @@ class BluetoothController @Inject constructor(
         val currentTime = System.currentTimeMillis()
         val thresholdTime = currentTime - discoverInactivityDurationMillis
 
-        val updatedList = _devices.value.filter {
-            it.lastSeen > thresholdTime
+        val oldDevices = _devices.value.filter {
+            it.connectionState == ConnectionState.DISCOVERED && it.lastSeen < thresholdTime
         }
 
-        val removedDevices =  _devices.value - updatedList.toSet()
-        removedDevices.forEach { bluetoothDeviceDelegate?.onDeviceStoppedAdvertising(it) }
-
-        _devices.value = updatedList
+        oldDevices.forEach {
+            bluetoothDeviceDelegate?.onDeviceStoppedAdvertising(it)
+            removeFromDevices(it)
+        }
     }
 
 
     /**
      * Connect functions
      */
-    // if services empty, discover services
-    // if services not empty, create new list
-    // if services has not characteristcs, discover characteristics
-    // if services has characteristics, use the listed list
-    // Convert the string uuids to real stuff
     private fun getDeviceFromGatt(gatt: BluetoothGatt): BluetoothDeviceInfo? {
         return _devices.value.firstOrNull { it.device.address == gatt.device.address }
     }
@@ -194,6 +202,18 @@ class BluetoothController @Inject constructor(
         }
     }
 
+    private fun setServicesForDevice(data: BluetoothConnectData) {
+        _devices.update { devices ->
+            devices.map {
+                if (it.device.address == data.device.device.address) {
+                    it.copy(services = data.services)
+                } else {
+                    it
+                }
+            }
+        }
+    }
+
     private fun setGattForDevice(gatt: BluetoothGatt): BluetoothDeviceInfo? {
         var device: BluetoothDeviceInfo? = null
         _devices.update { devices ->
@@ -208,5 +228,41 @@ class BluetoothController @Inject constructor(
             }
         }
         return device
+    }
+
+    private fun handleServices(device: BluetoothDeviceInfo) {
+        val gatt = device.gatt ?: return
+
+        if (device.services.isEmpty()) {
+            bluetoothConnector.setServiceNotifiers(gatt)
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            for (service in device.services) {
+                if (service.characteristics.isEmpty()) {
+                    device.gatt?.let {
+                        val characteristics = bluetoothConnector.getCharacteristics(it, service.serviceUUID)
+                        for (characteristic in characteristics) {
+                            bluetoothConnector.enableNotifications(gatt, characteristic)
+                        }
+                    }
+                } else {
+                    for (characteristicUuid in service.characteristics) {
+                        bluetoothConnector.getCharacteristicFromUuid(gatt, service.serviceUUID, characteristicUuid)?.let {
+                            bluetoothConnector.enableNotifications(gatt, it)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getDeviceGatt(device: BluetoothDeviceInfo): BluetoothGatt? {
+        return _devices.value.firstOrNull { it.device.address == device.device.address }?.gatt
+    }
+
+    private fun deviceIsConnected(device: BluetoothDeviceInfo): Boolean {
+        return _devices.value.any { it.device.address == device.device.address && it.connectionState == ConnectionState.CONNECTED }
     }
 }

@@ -18,11 +18,10 @@ import com.example.bluetoothframework.extensions.isNotifiable
 import com.example.bluetoothframework.extensions.isWritable
 import com.example.bluetoothframework.extensions.isWritableWithoutResponse
 import com.example.bluetoothframework.extensions.printGattTable
+import com.example.bluetoothframework.extensions.toUuid
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,7 +32,6 @@ class BluetoothConnector @Inject constructor(
 ) : BluetoothConnectorInterface {
     private var writeDescriptorsBuffer: MutableMap<BluetoothGattDescriptor, CompletableDeferred<Unit>> = mutableMapOf()
     private var bluetoothConnectForwarderDelegate: BluetoothConnectForwarderDelegate? = null
-    private val _gattDevices = MutableStateFlow<List<BluetoothGatt>>(emptyList())
 
     override fun setConnectionDelegate(listener: BluetoothConnectForwarderDelegate) {
         bluetoothConnectForwarderDelegate = listener
@@ -43,6 +41,15 @@ class BluetoothConnector @Inject constructor(
         writeEnqueuer.enqueueWrite(gatt) {
             writeOperation(gatt, characteristic, payload)
         }
+    }
+
+    override fun discoverServices(gatt: BluetoothGatt) {
+        gatt.discoverServices()
+    }
+
+    override fun getCharacteristics(gatt: BluetoothGatt, serviceUuid: String): List<BluetoothGattCharacteristic> {
+        val service = gatt.getService(serviceUuid.toUuid())
+        return service?.characteristics?.filter { it.isNotifiable() || it.isIndicatable() } ?: emptyList()
     }
 
     private fun writeOperation(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
@@ -58,12 +65,11 @@ class BluetoothConnector @Inject constructor(
         gatt.writeCharacteristic(characteristic)
     }
 
-    override fun disconnectDevice(device: BluetoothDevice) {
-        _gattDevices.value.find { it.device.address == device.address }?.disconnect()
+    override fun disconnectDevice(gatt: BluetoothGatt) {
+        gatt.disconnect()
     }
 
     override fun connectDevice(device: BluetoothDevice) {
-        if (deviceIsConnected(device)) return
         device.connectGatt(context, false, gattCallback)
     }
 
@@ -73,7 +79,12 @@ class BluetoothConnector @Inject constructor(
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            handleDiscoveredServices(gatt, status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                with(gatt) {
+                    printGattTable()
+                }
+                bluetoothConnectForwarderDelegate?.onServicesDiscovered(gatt)
+            }
         }
 
         override fun onCharacteristicChanged(
@@ -86,6 +97,7 @@ class BluetoothConnector @Inject constructor(
                 gatt,
                 characteristic.uuid.toString()
             )
+            println("RRR - onCharacteristicChanged: ${characteristic.uuid}")
         }
 
         override fun onDescriptorWrite(
@@ -106,33 +118,23 @@ class BluetoothConnector @Inject constructor(
         }
     }
 
-    private fun handleDiscoveredServices(gatt: BluetoothGatt, status: Int) {
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            with(gatt) {
-                printGattTable()
-                setServiceNotifiers(gatt)
-            }
-        }
-    }
-
-    private fun setServiceNotifiers(gatt: BluetoothGatt) {
+    override fun setServiceNotifiers(gatt: BluetoothGatt) {
         CoroutineScope(Dispatchers.IO).launch {
             gatt.services.forEach { service ->
-                service.characteristics.forEach { characteristic ->
-                    when {
-                        characteristic.isNotifiable() -> {
-                            enableNotifications(gatt, characteristic, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-                        }
-                        characteristic.isIndicatable() -> {
-                            enableNotifications(gatt, characteristic, BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
-                        }
-                    }
+                service.characteristics.filter { it.isNotifiable() || it.isIndicatable() }.forEach { characteristic ->
+                    enableNotifications(gatt, characteristic)
                 }
             }
         }
     }
 
-    private suspend fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, descriptorValue: ByteArray) {
+    override fun getCharacteristicFromUuid(gatt: BluetoothGatt, serviceUuid: String, characteristicUuid: String): BluetoothGattCharacteristic? {
+        val service = gatt.getService(serviceUuid.toUuid())
+        return service?.getCharacteristic(characteristicUuid.toUuid())
+    }
+
+    override suspend fun enableNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+        val descriptorValue = getDescriptorValue(characteristic) ?: return
         gatt.setCharacteristicNotification(characteristic, true)
         val descriptors =  characteristic.descriptors
 
@@ -151,18 +153,6 @@ class BluetoothConnector @Inject constructor(
         }
     }
 
-    private fun removeFromGattList(gatt: BluetoothGatt) {
-        _gattDevices.update { currentList ->
-            currentList.filter { it.device.address != gatt.device.address }
-        }
-    }
-
-    private fun addToGattList(gatt: BluetoothGatt) {
-        _gattDevices.update { currentList ->
-            currentList + gatt
-        }
-    }
-
     private fun handleConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         if (status != BluetoothGatt.GATT_SUCCESS) {
             onConnectionFailed(gatt)
@@ -170,33 +160,21 @@ class BluetoothConnector @Inject constructor(
         }
 
         when (newState) {
-            BluetoothGatt.STATE_CONNECTED -> onDeviceConnected(gatt)
+            BluetoothGatt.STATE_CONNECTED -> bluetoothConnectForwarderDelegate?.onDeviceConnected(gatt)
             BluetoothGatt.STATE_DISCONNECTED -> onDeviceDisconnected(gatt)
         }
     }
 
-    private fun onDeviceConnected(gatt: BluetoothGatt) {
-        addToGattList(gatt)
-        bluetoothConnectForwarderDelegate?.onDeviceConnected(gatt)
-        gatt.discoverServices()
-    }
-
     private fun onDeviceDisconnected(gatt: BluetoothGatt) {
-        removeFromGattList(gatt)
         bluetoothConnectForwarderDelegate?.onDeviceDisconnected(gatt)
         writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
     }
 
     private fun onConnectionFailed(gatt: BluetoothGatt) {
-        removeFromGattList(gatt)
         bluetoothConnectForwarderDelegate?.onConnectionFail(gatt)
         writeEnqueuer.clearDeviceQueue(gatt)
         gatt.close()
-    }
-
-    private fun deviceIsConnected(device: BluetoothDevice): Boolean {
-        return device.address in _gattDevices.value.map { it.device.address }
     }
 
     private fun getWriteType(characteristic: BluetoothGattCharacteristic): Int? {
@@ -205,6 +183,17 @@ class BluetoothConnector @Inject constructor(
             characteristic.isWritableWithoutResponse() -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
             else -> {
                 Log.e("getWriteType", "Characteristic ${characteristic.uuid} cannot be written to")
+                null
+            }
+        }
+    }
+
+    private fun getDescriptorValue(characteristic: BluetoothGattCharacteristic): ByteArray? {
+        return when {
+            characteristic.isNotifiable() -> BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            characteristic.isIndicatable() -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+            else -> {
+                Log.e("getDescriptorValue", "Characteristic ${characteristic.uuid} is neither notifiable nor indicatable")
                 null
             }
         }

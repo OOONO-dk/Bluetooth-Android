@@ -1,18 +1,17 @@
 package com.example.bluetoothframework.implementation_examples.service
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
 import com.example.bluetoothframework.control.delegates.BluetoothDeviceDelegate
+import com.example.bluetoothframework.model.data.BluetoothConnectData
+import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
+import com.example.bluetoothframework.model.data.BluetoothWriteData
 import kotlinx.coroutines.flow.StateFlow
 
 interface ImplementationExampleInterface:
     BluetoothDeviceDelegate {
-    val scannedDevices: StateFlow<List<BluetoothDevice>>
-    val connectedDevices: StateFlow<List<BluetoothGatt>>
+    val devices: StateFlow<List<BluetoothDeviceInfo>>
     fun startDiscovery()
     fun stopDiscovery()
-    fun connectDevice(device: BluetoothDevice)
-    fun disconnectDevice(device: BluetoothDevice)
-    fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray)
+    fun connectDevices(devices: List<BluetoothConnectData>)
+    fun disconnectDevices(devices: List<BluetoothDeviceInfo>)
+    fun writeToDevices(devices: List<BluetoothWriteData>)
 }

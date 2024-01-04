@@ -7,4 +7,5 @@ interface BluetoothConnectForwarderDelegate {
     fun onDeviceDisconnected(gatt: BluetoothGatt)
     fun onConnectionFail(gatt: BluetoothGatt)
     fun onCharacteristicChanged(byteArray: ByteArray, gatt: BluetoothGatt, characteristicUuid: String)
+    fun onServicesDiscovered(gatt: BluetoothGatt)
 }

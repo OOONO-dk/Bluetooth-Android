@@ -1,7 +1,6 @@
 package com.example.bluetoothframework.implementation_examples.presentation
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -73,7 +72,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                 Title("Connected Devices")
                 Container (Modifier.weight(1f)) {
                     ConnectedDevicesList(
-                        state.filter { it.connectionState == ConnectionState.CONNECTED },
+                        state.filter { it.connectionState != ConnectionState.DISCOVERED },
                         blink = { viewModel.blinkSirene(it) }
                     ) { viewModel.disconnectDevice(it) }
                 }
@@ -113,7 +112,7 @@ private fun AvailableDevicesList(
         }
         items(devices) { device ->
             Spacer(Modifier.height(7.dp))
-            DiscoveredDevice(device.device) { onConnectClick(device) }
+            DiscoveredDevice(device) { onConnectClick(device) }
         }
         item {
             Spacer(Modifier.height(20.dp))
@@ -135,7 +134,7 @@ private fun ConnectedDevicesList(
         }
         items(devices) { device ->
             Spacer(Modifier.height(7.dp))
-            ConnectedDevice(device.device, blink = { blink(device) }) { disconnect(device) }
+            ConnectedDevice(device, blink = { blink(device) }) { disconnect(device) }
         }
         item {
             Spacer(Modifier.height(20.dp))
@@ -146,7 +145,7 @@ private fun ConnectedDevicesList(
 @SuppressLint("MissingPermission")
 @Composable
 private fun DiscoveredDevice(
-    device: BluetoothDevice,
+    device: BluetoothDeviceInfo,
     onClick: () -> Unit
 ) {
     Box(
@@ -162,7 +161,7 @@ private fun DiscoveredDevice(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "${device.name}\n${device.address}",
+                "${device.device.name}\n${device.device.address}\n${device.connectionState}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f)
             )
@@ -177,7 +176,7 @@ private fun DiscoveredDevice(
 @SuppressLint("MissingPermission")
 @Composable
 private fun ConnectedDevice(
-    device: BluetoothDevice,
+    device: BluetoothDeviceInfo,
     blink: () -> Unit,
     disconnect: () -> Unit
 ) {
@@ -194,7 +193,7 @@ private fun ConnectedDevice(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "${device.name}\n${device.address}",
+                "${device.device.name}\n${device.device.address}\n${device.connectionState}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f)
             )

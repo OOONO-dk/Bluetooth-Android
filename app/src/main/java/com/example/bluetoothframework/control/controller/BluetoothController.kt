@@ -9,6 +9,7 @@ import com.example.bluetoothframework.extensions.toBluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothConnectData
 import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothScannerConfig
+import com.example.bluetoothframework.model.data.BluetoothService
 import com.example.bluetoothframework.model.data.BluetoothWriteData
 import com.example.bluetoothframework.model.enums.ConnectionState
 import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
@@ -37,9 +38,9 @@ class BluetoothController @Inject constructor(
     }
 
 
-    /**
-     * Listeners
-     */
+    /**************************************
+    *            Listeners Start
+     *************************************/
     override fun onDeviceDiscovered(scanResult: ScanResult) {
         onScanResult(scanResult)
     }
@@ -82,13 +83,20 @@ class BluetoothController @Inject constructor(
     }
 
     override fun onServicesDiscovered(gatt: BluetoothGatt) {
-        getDeviceFromGatt(gatt)?.let { handleServices(it) }
+        getDeviceFromGatt(gatt)?.let { setServicesNotifiers(it) }
     }
+    /**************************************
+     *            Listeners End
+     *************************************/
 
 
-    /**
-     * Bluetooth controls
-     */
+
+
+
+
+    /**************************************
+     *      Bluetooth Controls Start
+     *************************************/
     override fun startDiscovery(scannerConfig: BluetoothScannerConfig) {
         bluetoothScanner.startDiscovery(scannerConfig)
         deviceAdvertisementTimeout.checkDeviceDiscoverTimeout(scannerConfig.advertisingCheckIntervalMillis) {
@@ -125,15 +133,25 @@ class BluetoothController @Inject constructor(
             }
         }
     }
+    /**************************************
+     *      Bluetooth Controls End
+     *************************************/
 
 
-    /**
-     * Scan functions
-     */
+
+
+
+
+    /**************************************
+     *        Scan Functions Start
+     *************************************/
     private fun onScanResult(result: ScanResult) {
         val device = result.toBluetoothDeviceInfo()
         val updatedList = updateDeviceInfo(result)
+        addOrUpdatedDiscoveredDevice(device, updatedList)
+    }
 
+    private fun addOrUpdatedDiscoveredDevice(device: BluetoothDeviceInfo, updatedList: List<BluetoothDeviceInfo>) {
         _devices.update { devices ->
             val deviceExists = devices.any { it.device.address == device.device.address }
 
@@ -173,33 +191,79 @@ class BluetoothController @Inject constructor(
             removeFromDevices(it)
         }
     }
+    /**************************************
+     *        Scan Functions End
+     *************************************/
 
 
-    /**
-     * Connect functions
-     */
-    private fun getDeviceFromGatt(gatt: BluetoothGatt): BluetoothDeviceInfo? {
-        return _devices.value.firstOrNull { it.device.address == gatt.device.address }
-    }
 
-    private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
-        _devices.update { devices ->
-            devices.map {
-                if (it.device.address == device.device.address) {
-                    bluetoothDeviceDelegate?.onConnectionStateUpdate(device, connectionState)
-                    it.copy(connectionState = connectionState)
+
+
+
+    /**************************************
+     *     Connection Functions Start
+     *************************************/
+    private fun setServicesNotifiers(device: BluetoothDeviceInfo) {
+        val gatt = device.gatt ?: return
+
+        if (device.services.isEmpty()) {
+            bluetoothConnector.setServiceNotifiers(gatt)
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            for (service in device.services) {
+                if (service.characteristics.isEmpty()) {
+                    discoverAndEnableAllCharacteristics(gatt, service.serviceUuid)
                 } else {
-                    it
+                    enableCharacteristics(gatt, service)
                 }
             }
         }
+    }
 
+    private suspend fun discoverAndEnableAllCharacteristics(gatt: BluetoothGatt, serviceUuid: String) {
+        val characteristics = bluetoothConnector.getAllCharacteristics(gatt, serviceUuid)
+        for (characteristic in characteristics) {
+            bluetoothConnector.enableNotifications(gatt, characteristic)
+        }
+    }
+
+    private suspend fun enableCharacteristics(gatt: BluetoothGatt, bluetoothService: BluetoothService) {
+        for (characteristicUuid in bluetoothService.characteristics) {
+            bluetoothConnector.getCharacteristicFromUuid(gatt, bluetoothService.serviceUuid, characteristicUuid)?.let {
+                bluetoothConnector.enableNotifications(gatt, it)
+            }
+        }
+    }
+    /**************************************
+     *     Connection Functions End
+     *************************************/
+
+
+
+
+
+
+    /**************************************
+     *        List Functions Start
+     *************************************/
+    private fun getDeviceGatt(device: BluetoothDeviceInfo): BluetoothGatt? {
+        return _devices.value.firstOrNull { it.device.address == device.device.address }?.gatt
+    }
+
+    private fun deviceIsConnected(device: BluetoothDeviceInfo): Boolean {
+        return _devices.value.any { it.device.address == device.device.address && it.connectionState == ConnectionState.CONNECTED }
     }
 
     private fun removeFromDevices(device: BluetoothDeviceInfo) {
         _devices.update { devices ->
             devices.filter { it.device.address != device.device.address }
         }
+    }
+
+    private fun getDeviceFromGatt(gatt: BluetoothGatt): BluetoothDeviceInfo? {
+        return _devices.value.firstOrNull { it.device.address == gatt.device.address }
     }
 
     private fun setServicesForDevice(data: BluetoothConnectData) {
@@ -230,39 +294,19 @@ class BluetoothController @Inject constructor(
         return device
     }
 
-    private fun handleServices(device: BluetoothDeviceInfo) {
-        val gatt = device.gatt ?: return
-
-        if (device.services.isEmpty()) {
-            bluetoothConnector.setServiceNotifiers(gatt)
-            return
-        }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            for (service in device.services) {
-                if (service.characteristics.isEmpty()) {
-                    device.gatt?.let {
-                        val characteristics = bluetoothConnector.getCharacteristics(it, service.serviceUUID)
-                        for (characteristic in characteristics) {
-                            bluetoothConnector.enableNotifications(gatt, characteristic)
-                        }
-                    }
+    private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
+        _devices.update { devices ->
+            devices.map {
+                if (it.device.address == device.device.address) {
+                    bluetoothDeviceDelegate?.onConnectionStateUpdate(device, connectionState)
+                    it.copy(connectionState = connectionState)
                 } else {
-                    for (characteristicUuid in service.characteristics) {
-                        bluetoothConnector.getCharacteristicFromUuid(gatt, service.serviceUUID, characteristicUuid)?.let {
-                            bluetoothConnector.enableNotifications(gatt, it)
-                        }
-                    }
+                    it
                 }
             }
         }
     }
-
-    private fun getDeviceGatt(device: BluetoothDeviceInfo): BluetoothGatt? {
-        return _devices.value.firstOrNull { it.device.address == device.device.address }?.gatt
-    }
-
-    private fun deviceIsConnected(device: BluetoothDeviceInfo): Boolean {
-        return _devices.value.any { it.device.address == device.device.address && it.connectionState == ConnectionState.CONNECTED }
-    }
+    /**************************************
+     *        List Functions End
+     *************************************/
 }

@@ -9,7 +9,7 @@ interface BluetoothConnectorInterface {
     fun connectDevice(device: BluetoothDevice)
     fun disconnectDevice(gatt: BluetoothGatt)
     fun setConnectionDelegate(listener: BluetoothConnectForwarderDelegate)
-    fun getCharacteristics(gatt: BluetoothGatt, serviceUuid: String): List<BluetoothGattCharacteristic>
+    fun getAllCharacteristics(gatt: BluetoothGatt, serviceUuid: String): List<BluetoothGattCharacteristic>
     fun writeToDevice(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, payload: ByteArray)
     fun discoverServices(gatt: BluetoothGatt)
     fun setServiceNotifiers(gatt: BluetoothGatt)

@@ -127,6 +127,6 @@ class ImplementationExample @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override fun onCharacteristicChanged(byteArray: ByteArray, device: BluetoothDeviceInfo, characteristicUuid: String) {
-        //println("RRR - onCharacteristicChanged: ${device.address} - ${characteristicUuid}")
+
     }
 }

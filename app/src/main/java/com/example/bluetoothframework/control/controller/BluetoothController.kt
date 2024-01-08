@@ -253,7 +253,10 @@ class BluetoothController @Inject constructor(
     }
 
     private fun deviceIsConnected(device: BluetoothDeviceInfo): Boolean {
-        return _devices.value.any { it.device.address == device.device.address && it.connectionState == ConnectionState.CONNECTED }
+        return _devices.value.any {
+            it.device.address == device.device.address &&
+            it.connectionState == ConnectionState.CONNECTED
+        }
     }
 
     private fun removeFromDevices(device: BluetoothDeviceInfo) {
@@ -267,44 +270,39 @@ class BluetoothController @Inject constructor(
     }
 
     private fun setServicesForDevice(data: BluetoothConnectData) {
-        _devices.update { devices ->
-            devices.map {
-                if (it.device.address == data.device.device.address) {
-                    it.copy(services = data.services)
-                } else {
-                    it
-                }
-            }
+        modifyDeviceInfo(data.device.device.address) {
+            it.copy(services = data.services)
         }
     }
 
     private fun setGattForDevice(gatt: BluetoothGatt): BluetoothDeviceInfo? {
-        var device: BluetoothDeviceInfo? = null
+        return modifyDeviceInfo(gatt.device.address) { it.copy(gatt = gatt) }
+    }
+
+    private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
+        modifyDeviceInfo(device.device.address) {
+            bluetoothDeviceDelegate?.onConnectionStateUpdate(device, connectionState)
+            it.copy(connectionState = connectionState)
+        }
+    }
+
+    private inline fun modifyDeviceInfo(
+        address: String,
+        operation: (BluetoothDeviceInfo) -> BluetoothDeviceInfo
+    ): BluetoothDeviceInfo? {
+        var modifiedDevice: BluetoothDeviceInfo? = null
         _devices.update { devices ->
             devices.map {
-                if (it.device.address == gatt.device.address) {
-                    val updatedDevice = it.copy(gatt = gatt)
-                    device = updatedDevice
+                if (it.device.address == address) {
+                    val updatedDevice = operation(it)
+                    modifiedDevice = updatedDevice
                     updatedDevice
                 } else {
                     it
                 }
             }
         }
-        return device
-    }
-
-    private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
-        _devices.update { devices ->
-            devices.map {
-                if (it.device.address == device.device.address) {
-                    bluetoothDeviceDelegate?.onConnectionStateUpdate(device, connectionState)
-                    it.copy(connectionState = connectionState)
-                } else {
-                    it
-                }
-            }
-        }
+        return modifiedDevice
     }
     /**************************************
      *        List Functions End

@@ -1,20 +1,20 @@
 package com.example.bluetoothframework.di
 
 import android.content.Context
+import com.example.bluetoothframework.connection.connector.BluetoothConnectorImpl
 import com.example.bluetoothframework.connection.connector.BluetoothConnector
-import com.example.bluetoothframework.connection.connector.BluetoothConnectorInterface
+import com.example.bluetoothframework.connection.enqueue.WriteEnqueuerImpl
 import com.example.bluetoothframework.connection.enqueue.WriteEnqueuer
-import com.example.bluetoothframework.connection.enqueue.WriteEnqueuerInterface
-import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
+import com.example.bluetoothframework.scanning.scanner.BluetoothScannerImpl
 import com.example.bluetoothframework.implementation_examples.service.ImplementationExample
 import com.example.bluetoothframework.implementation_examples.service.ImplementationExampleInterface
+import com.example.bluetoothframework.control.controller.BluetoothControllerImpl
 import com.example.bluetoothframework.control.controller.BluetoothController
-import com.example.bluetoothframework.control.controller.BluetoothControllerInterface
-import com.example.bluetoothframework.scanning.scanner.BluetoothScannerInterface
-import com.example.bluetoothframework.control.advertising_timeout.DeviceAdvertisementTimeout
-import com.example.bluetoothframework.control.advertising_timeout.DeviceAdvertisementTimeoutInterface
+import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
+import com.example.bluetoothframework.control.advertising_timeout.AdvertisementTimeoutImpl
+import com.example.bluetoothframework.control.advertising_timeout.AdvertisementTimeout
+import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTrackerImpl
 import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTracker
-import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTrackerInterface
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,7 +34,7 @@ object AppModule {
     @Provides
     @Singleton
     fun providesImplementationExample(
-        bluetoothController: BluetoothControllerInterface
+        bluetoothController: BluetoothController
     ): ImplementationExampleInterface {
         return ImplementationExample(bluetoothController)
     }
@@ -43,45 +43,45 @@ object AppModule {
     @Provides
     fun providesBluetoothScanner(
         @ApplicationContext context: Context,
-        @Singleton scanTracker: ScanTrackerInterface
-    ): BluetoothScannerInterface {
-        return BluetoothScanner(context, scanTracker)
+        @Singleton scanTracker: ScanTracker
+    ): BluetoothScanner {
+        return BluetoothScannerImpl(context, scanTracker)
     }
 
     @Singleton
     @Provides
-    fun providesWriteEnqueuer(): WriteEnqueuerInterface {
-        return WriteEnqueuer()
+    fun providesWriteEnqueuer(): WriteEnqueuer {
+        return WriteEnqueuerImpl()
     }
 
     @Singleton
     @Provides
     fun providesBluetoothConnector(
         @ApplicationContext context: Context,
-        @Singleton writeEnqueuer: WriteEnqueuerInterface
-    ): BluetoothConnectorInterface {
-        return BluetoothConnector(context, writeEnqueuer)
+        @Singleton writeEnqueuer: WriteEnqueuer
+    ): BluetoothConnector {
+        return BluetoothConnectorImpl(context, writeEnqueuer)
     }
 
     @Singleton
     @Provides
     fun providesBluetoothController(
-        @Singleton bluetoothScanner: BluetoothScannerInterface,
-        @Singleton bluetoothConnector: BluetoothConnectorInterface,
-        @Singleton deviceAdvertisementTimeout: DeviceAdvertisementTimeoutInterface
-    ): BluetoothControllerInterface {
-        return BluetoothController(bluetoothScanner, bluetoothConnector, deviceAdvertisementTimeout)
+        @Singleton bluetoothScanner: BluetoothScanner,
+        @Singleton bluetoothConnector: BluetoothConnector,
+        @Singleton deviceAdvertisementTimeout: AdvertisementTimeout
+    ): BluetoothController {
+        return BluetoothControllerImpl(bluetoothScanner, bluetoothConnector, deviceAdvertisementTimeout)
     }
 
     @Singleton
     @Provides
-    fun providesScanTracker(): ScanTrackerInterface {
-        return ScanTracker()
+    fun providesScanTracker(): ScanTracker {
+        return ScanTrackerImpl()
     }
 
     @Singleton
     @Provides
-    fun providesDeviceDiscoverTimeout(): DeviceAdvertisementTimeoutInterface {
-        return DeviceAdvertisementTimeout()
+    fun providesDeviceDiscoverTimeout(): AdvertisementTimeout {
+        return AdvertisementTimeoutImpl()
     }
 }

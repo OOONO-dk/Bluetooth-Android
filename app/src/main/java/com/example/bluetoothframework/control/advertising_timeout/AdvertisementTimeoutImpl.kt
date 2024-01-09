@@ -7,7 +7,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-class DeviceAdvertisementTimeout @Inject constructor() : DeviceAdvertisementTimeoutInterface {
+class AdvertisementTimeoutImpl @Inject constructor() : AdvertisementTimeout {
     private var isRunning = false
     private var job: Job? = null
 

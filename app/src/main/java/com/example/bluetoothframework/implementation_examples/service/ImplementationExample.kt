@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.os.ParcelUuid
-import com.example.bluetoothframework.control.controller.BluetoothControllerInterface
+import com.example.bluetoothframework.control.controller.BluetoothController
 import com.example.bluetoothframework.model.data.BluetoothConnectData
 import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothScannerConfig
@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class ImplementationExample @Inject constructor(
-    private val bluetoothController: BluetoothControllerInterface
+    private val bluetoothController: BluetoothController
 ) : ImplementationExampleInterface {
     private val _devices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
 

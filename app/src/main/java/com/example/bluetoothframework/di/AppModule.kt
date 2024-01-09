@@ -13,6 +13,7 @@ import com.example.bluetoothframework.control.controller.BluetoothController
 import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
 import com.example.bluetoothframework.control.advertising_timeout.AdvertisementTimeoutImpl
 import com.example.bluetoothframework.control.advertising_timeout.AdvertisementTimeout
+import com.example.bluetoothframework.control.utils.DevicesListHelper
 import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTrackerImpl
 import com.example.bluetoothframework.scanning.utils.scan_tracker.ScanTracker
 import dagger.Module
@@ -65,12 +66,19 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun providesDevicesListHelper(): DevicesListHelper {
+        return DevicesListHelper()
+    }
+
+    @Singleton
+    @Provides
     fun providesBluetoothController(
+        @Singleton listHelper: DevicesListHelper,
         @Singleton bluetoothScanner: BluetoothScanner,
         @Singleton bluetoothConnector: BluetoothConnector,
         @Singleton deviceAdvertisementTimeout: AdvertisementTimeout
     ): BluetoothController {
-        return BluetoothControllerImpl(bluetoothScanner, bluetoothConnector, deviceAdvertisementTimeout)
+        return BluetoothControllerImpl(listHelper, bluetoothScanner, bluetoothConnector, deviceAdvertisementTimeout)
     }
 
     @Singleton

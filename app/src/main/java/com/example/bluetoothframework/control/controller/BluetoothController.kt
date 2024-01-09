@@ -39,7 +39,7 @@ class BluetoothController @Inject constructor(
 
 
     /**************************************
-    *            Listeners Start
+     *            Listeners Start
      *************************************/
     override fun onDeviceDiscovered(scanResult: ScanResult) {
         onScanResult(scanResult)
@@ -52,7 +52,8 @@ class BluetoothController @Inject constructor(
     }
 
     override fun onDeviceConnected(gatt: BluetoothGatt) {
-        setGattForDevice(gatt)?.let {
+        setGattForDevice(gatt)
+        getDeviceFromGatt(gatt)?.let {
             updateConnectionState(it, ConnectionState.CONNECTED)
             bluetoothConnector.discoverServices(gatt)
         }
@@ -255,7 +256,7 @@ class BluetoothController @Inject constructor(
     private fun deviceIsConnected(device: BluetoothDeviceInfo): Boolean {
         return _devices.value.any {
             it.device.address == device.device.address &&
-            it.connectionState == ConnectionState.CONNECTED
+                    it.connectionState == ConnectionState.CONNECTED
         }
     }
 
@@ -275,8 +276,8 @@ class BluetoothController @Inject constructor(
         }
     }
 
-    private fun setGattForDevice(gatt: BluetoothGatt): BluetoothDeviceInfo? {
-        return modifyDeviceInfo(gatt.device.address) { it.copy(gatt = gatt) }
+    private fun setGattForDevice(gatt: BluetoothGatt) {
+        modifyDeviceInfo(gatt.device.address) { it.copy(gatt = gatt) }
     }
 
     private fun updateConnectionState(device: BluetoothDeviceInfo, connectionState: ConnectionState) {
@@ -286,23 +287,16 @@ class BluetoothController @Inject constructor(
         }
     }
 
-    private inline fun modifyDeviceInfo(
-        address: String,
-        operation: (BluetoothDeviceInfo) -> BluetoothDeviceInfo
-    ): BluetoothDeviceInfo? {
-        var modifiedDevice: BluetoothDeviceInfo? = null
+    private inline fun modifyDeviceInfo(address: String, operation: (BluetoothDeviceInfo) -> BluetoothDeviceInfo) {
         _devices.update { devices ->
             devices.map {
                 if (it.device.address == address) {
-                    val updatedDevice = operation(it)
-                    modifiedDevice = updatedDevice
-                    updatedDevice
+                    operation(it)
                 } else {
                     it
                 }
             }
         }
-        return modifiedDevice
     }
     /**************************************
      *        List Functions End

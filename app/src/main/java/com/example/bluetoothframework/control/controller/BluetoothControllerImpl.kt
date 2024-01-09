@@ -3,6 +3,7 @@ package com.example.bluetoothframework.control.controller
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.le.ScanResult
 import com.example.bluetoothframework.connection.connector.BluetoothConnector
+import com.example.bluetoothframework.connection.delegates.BluetoothConnectForwarderDelegate
 import com.example.bluetoothframework.control.advertising_timeout.AdvertisementTimeout
 import com.example.bluetoothframework.control.delegates.BluetoothDeviceDelegate
 import com.example.bluetoothframework.extensions.toBluetoothDeviceInfo
@@ -12,6 +13,7 @@ import com.example.bluetoothframework.model.data.BluetoothScannerConfig
 import com.example.bluetoothframework.model.data.BluetoothService
 import com.example.bluetoothframework.model.data.BluetoothWriteData
 import com.example.bluetoothframework.model.enums.ConnectionState
+import com.example.bluetoothframework.scanning.delegates.BluetoothScanForwarderDelegate
 import com.example.bluetoothframework.scanning.scanner.BluetoothScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +26,9 @@ class BluetoothControllerImpl @Inject constructor(
     private val bluetoothScanner: BluetoothScanner,
     private val bluetoothConnector: BluetoothConnector,
     private val deviceAdvertisementTimeout: AdvertisementTimeout
-) : BluetoothController {
+) : BluetoothController,
+    BluetoothScanForwarderDelegate,
+    BluetoothConnectForwarderDelegate {
     private var bluetoothDeviceDelegate: BluetoothDeviceDelegate? = null
     private val _devices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
 

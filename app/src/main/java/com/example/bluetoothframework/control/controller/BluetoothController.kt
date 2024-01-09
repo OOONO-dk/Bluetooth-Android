@@ -1,16 +1,12 @@
 package com.example.bluetoothframework.control.controller
 
-import com.example.bluetoothframework.connection.delegates.BluetoothConnectForwarderDelegate
 import com.example.bluetoothframework.control.delegates.BluetoothDeviceDelegate
 import com.example.bluetoothframework.model.data.BluetoothConnectData
 import com.example.bluetoothframework.model.data.BluetoothDeviceInfo
 import com.example.bluetoothframework.model.data.BluetoothScannerConfig
 import com.example.bluetoothframework.model.data.BluetoothWriteData
-import com.example.bluetoothframework.scanning.delegates.BluetoothScanForwarderDelegate
 
-interface BluetoothController:
-    BluetoothScanForwarderDelegate,
-    BluetoothConnectForwarderDelegate {
+interface BluetoothController {
     fun startDiscovery(scannerConfig: BluetoothScannerConfig)
     fun stopDiscovery()
     fun setBluetoothDeviceListener(listener: BluetoothDeviceDelegate)

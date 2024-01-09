@@ -138,8 +138,6 @@ class BluetoothConnector @Inject constructor(
         return service?.getCharacteristic(characteristicUuid.toUuid())
     }
 
-
-
     private fun handleConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         if (status != BluetoothGatt.GATT_SUCCESS) {
             onConnectionFailed(gatt)
